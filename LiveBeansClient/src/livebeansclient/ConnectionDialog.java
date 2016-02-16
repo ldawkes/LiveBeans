@@ -5,13 +5,9 @@
  */
 package livebeansclient;
 
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.event.KeyEvent;
-import java.text.ParseException;
-import javax.swing.JTextField;
-import javax.swing.text.DefaultFormatterFactory;
-import javax.swing.text.MaskFormatter;
+import java.rmi.RemoteException;
+import javax.swing.JOptionPane;
+import org.openide.util.Exceptions;
 
 /**
  *
@@ -19,6 +15,7 @@ import javax.swing.text.MaskFormatter;
  */
 public class ConnectionDialog extends javax.swing.JDialog
 {
+
     /**
      * Creates new form ConnectionDialog
      */
@@ -26,6 +23,9 @@ public class ConnectionDialog extends javax.swing.JDialog
     {
         super(parent, modal);
         initComponents();
+
+        txtClientName.setText("");
+        txtServerIP.setText("");
     }
 
     /**
@@ -49,6 +49,13 @@ public class ConnectionDialog extends javax.swing.JDialog
 
         btnConnect.setFont(new java.awt.Font("Tahoma", 1, 14)); // NOI18N
         org.openide.awt.Mnemonics.setLocalizedText(btnConnect, org.openide.util.NbBundle.getMessage(ConnectionDialog.class, "ConnectionDialog.btnConnect.text")); // NOI18N
+        btnConnect.addActionListener(new java.awt.event.ActionListener()
+        {
+            public void actionPerformed(java.awt.event.ActionEvent evt)
+            {
+                btnConnectActionPerformed(evt);
+            }
+        });
 
         org.openide.awt.Mnemonics.setLocalizedText(lblClientName, org.openide.util.NbBundle.getMessage(ConnectionDialog.class, "ConnectionDialog.lblClientName.text")); // NOI18N
         lblClientName.setToolTipText(org.openide.util.NbBundle.getMessage(ConnectionDialog.class, "ConnectionDialog.lblClientName.toolTipText")); // NOI18N
@@ -95,6 +102,36 @@ public class ConnectionDialog extends javax.swing.JDialog
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
+
+    private void btnConnectActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_btnConnectActionPerformed
+    {//GEN-HEADEREND:event_btnConnectActionPerformed
+        if (txtServerIP.getText().trim().equals("") || txtClientName.getText().trim().equals(""))
+        {
+            JOptionPane.showMessageDialog(this.getParent(), "You must input your Name & a Server IP to connect to");
+        } else
+        {
+            LiveBeansClient client = null;
+            try
+            {
+                client = (LiveBeansClient) LiveBeansClient.GetInstance();
+            } catch (RemoteException ex)
+            {
+                Exceptions.printStackTrace(ex);
+            }
+
+            try
+            {
+                client.SetName(txtClientName.getText().trim());
+                client.ConnectToServer(txtServerIP.getText().trim());
+
+                JOptionPane.showMessageDialog(this.getParent(), "You are now connected");
+            } catch (RemoteException ex)
+            {
+                System.out.println("Error Occurred: " + ex.getMessage());
+                JOptionPane.showMessageDialog(this.getParent(), "There was an error connecting to the server");
+            }
+        }
+    }//GEN-LAST:event_btnConnectActionPerformed
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnConnect;
