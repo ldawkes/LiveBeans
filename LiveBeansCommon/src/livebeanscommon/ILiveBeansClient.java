@@ -18,6 +18,8 @@ public interface ILiveBeansClient extends Remote
     void SetName(String newName) throws RemoteException;
     void ConnectToServer(String ipAddress) throws RemoteException;
     void DisconnectFromServer() throws RemoteException;
+    void UpdateLocalCode(ILiveBeansCodeSegment newCodeSegment) throws RemoteException;
+    void UpdateRemoteCode(ILiveBeansCodeSegment newCodeSegment) throws RemoteException;
     
     int GetID() throws RemoteException;
     String GetName() throws RemoteException;

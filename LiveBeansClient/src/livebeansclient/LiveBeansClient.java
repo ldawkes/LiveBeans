@@ -5,12 +5,10 @@
  */
 package livebeansclient;
 
-import java.io.IOException;
 import java.io.Serializable;
 import java.net.MalformedURLException;
 import java.rmi.Naming;
 import java.rmi.NotBoundException;
-import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -18,14 +16,14 @@ import java.rmi.server.UnicastRemoteObject;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import livebeanscommon.ILiveBeansClient;
+import livebeanscommon.ILiveBeansCodeSegment;
 import livebeanscommon.ILiveBeansServer;
-import org.openide.util.Exceptions;
 
 /**
  *
  * @author ooddl
  */
-public class LiveBeansClient extends UnicastRemoteObject implements Remote, Serializable, ILiveBeansClient
+public class LiveBeansClient extends UnicastRemoteObject implements Serializable, ILiveBeansClient
 {
 
     private int _clientID;
@@ -36,7 +34,7 @@ public class LiveBeansClient extends UnicastRemoteObject implements Remote, Seri
 
     private static LiveBeansClient _instance;
 
-    public static ILiveBeansClient GetInstance() throws RemoteException
+    public static ILiveBeansClient getInstance() throws RemoteException
     {
         if (_instance == null)
         {
@@ -73,19 +71,24 @@ public class LiveBeansClient extends UnicastRemoteObject implements Remote, Seri
         {
             System.out.println(String.format("IP Address (%s) matches regex pattern", serverAddress));
         }
-        
-        try {            
+
+        try
+        {
             Registry reg = LocateRegistry.getRegistry(serverAddress);
 
             _currentServer = (ILiveBeansServer) Naming.lookup("rmi://" + serverAddress + "/LiveBeansServer");
             _currentServer.RegisterClient(this);
-            
+
             System.out.println("Found Server.");
-        } catch (NotBoundException | MalformedURLException ex) {
+        } catch (NotBoundException | MalformedURLException ex)
+        {
             System.out.println(ex.getMessage());
+            return;
         }
-        
+
         System.out.println(String.format("Current server is %s", _currentServer == null ? "null" : "not null"));
+
+        TabListenerHandler.GetInstance().setUpListeners();
     }
 
     @Override
@@ -116,5 +119,17 @@ public class LiveBeansClient extends UnicastRemoteObject implements Remote, Seri
     public ILiveBeansServer GetServer() throws RemoteException
     {
         return _currentServer;
+    }
+
+    @Override
+    public void UpdateLocalCode(ILiveBeansCodeSegment ilbcs) throws RemoteException
+    {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public void UpdateRemoteCode(ILiveBeansCodeSegment ilbcs) throws RemoteException
+    {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 }

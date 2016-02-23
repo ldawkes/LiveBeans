@@ -113,7 +113,7 @@ public class ConnectionDialog extends javax.swing.JDialog
             LiveBeansClient client = null;
             try
             {
-                client = (LiveBeansClient) LiveBeansClient.GetInstance();
+                client = (LiveBeansClient) LiveBeansClient.getInstance();
             } catch (RemoteException ex)
             {
                 Exceptions.printStackTrace(ex);
