@@ -14,14 +14,22 @@ import java.rmi.RemoteException;
  */
 public interface ILiveBeansClient extends Remote
 {
-    void SetID(int newID) throws RemoteException;
-    void SetName(String newName) throws RemoteException;
-    void ConnectToServer(String ipAddress) throws RemoteException;
-    void DisconnectFromServer() throws RemoteException;
-    void UpdateLocalCode(ILiveBeansCodeSegment newCodeSegment) throws RemoteException;
-    void UpdateRemoteCode(ILiveBeansCodeSegment newCodeSegment) throws RemoteException;
-    
-    int GetID() throws RemoteException;
-    String GetName() throws RemoteException;
-    ILiveBeansServer GetServer() throws RemoteException;
+
+    void setID(int newID) throws RemoteException;
+
+    void setName(String newName) throws RemoteException;
+
+    void connectToServer(String ipAddress) throws RemoteException;
+
+    void disconnectFromServer() throws RemoteException;
+
+    void updateLocalCode(ILiveBeansCodeSegment newCodeSegment) throws RemoteException;
+
+    void updateRemoteCode(ILiveBeansCodeSegment newCodeSegment) throws RemoteException;
+
+    int getID() throws RemoteException;
+
+    String getName() throws RemoteException;
+
+    ILiveBeansServer getServer() throws RemoteException;
 }

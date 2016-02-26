@@ -14,6 +14,10 @@ import java.rmi.RemoteException;
  */
 public interface ILiveBeansServer extends Remote
 {
-    boolean RegisterClient(ILiveBeansClient client) throws RemoteException;
-    boolean UnRegisterClient(ILiveBeansClient client) throws RemoteException;
+
+    boolean registerClient(ILiveBeansClient client) throws RemoteException;
+
+    boolean unRegisterClient(ILiveBeansClient client) throws RemoteException;
+
+    void sendHeartbeat(int clientID) throws RemoteException;
 }

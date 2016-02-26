@@ -13,6 +13,10 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import livebeanscommon.ILiveBeansClient;
@@ -32,6 +36,9 @@ public class LiveBeansClient extends UnicastRemoteObject implements Serializable
     private final Pattern _ipAddressRegexPattern;
     private ILiveBeansServer _currentServer;
 
+    private final ScheduledExecutorService _scheduler;
+    private ScheduledFuture _heartbeatSchedule;
+
     private static LiveBeansClient _instance;
 
     public static ILiveBeansClient getInstance() throws RemoteException
@@ -48,22 +55,24 @@ public class LiveBeansClient extends UnicastRemoteObject implements Serializable
     {
         _ipAddressRegex = "(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)";
         _ipAddressRegexPattern = Pattern.compile(_ipAddressRegex);
+
+        _scheduler = Executors.newScheduledThreadPool(1);
     }
 
     @Override
-    public void SetID(int newID) throws RemoteException
+    public void setID(int newID) throws RemoteException
     {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        _clientID = newID;
     }
 
     @Override
-    public void SetName(String newName) throws RemoteException
+    public void setName(String newName) throws RemoteException
     {
         _clientName = newName;
     }
 
     @Override
-    public void ConnectToServer(String serverAddress) throws RemoteException
+    public void connectToServer(String serverAddress) throws RemoteException
     {
         Matcher regexMatcher = _ipAddressRegexPattern.matcher(serverAddress);
 
@@ -77,7 +86,9 @@ public class LiveBeansClient extends UnicastRemoteObject implements Serializable
             Registry reg = LocateRegistry.getRegistry(serverAddress);
 
             _currentServer = (ILiveBeansServer) Naming.lookup("rmi://" + serverAddress + "/LiveBeansServer");
-            _currentServer.RegisterClient(this);
+            _currentServer.registerClient(this);
+
+            _heartbeatSchedule = _scheduler.scheduleAtFixedRate(new ClientHeartbeat(), 2, 2, TimeUnit.SECONDS);
 
             System.out.println("Found Server.");
         } catch (NotBoundException | MalformedURLException ex)
@@ -92,11 +103,13 @@ public class LiveBeansClient extends UnicastRemoteObject implements Serializable
     }
 
     @Override
-    public void DisconnectFromServer() throws RemoteException
+    public void disconnectFromServer() throws RemoteException
     {
         try
         {
-            _currentServer.UnRegisterClient(this);
+            _currentServer.unRegisterClient(this);
+
+            _scheduler.shutdown();
         } catch (RemoteException ex)
         {
             System.out.println(ex.getMessage());
@@ -104,31 +117,31 @@ public class LiveBeansClient extends UnicastRemoteObject implements Serializable
     }
 
     @Override
-    public int GetID() throws RemoteException
+    public int getID() throws RemoteException
     {
         return _clientID;
     }
 
     @Override
-    public String GetName() throws RemoteException
+    public String getName() throws RemoteException
     {
         return _clientName;
     }
 
     @Override
-    public ILiveBeansServer GetServer() throws RemoteException
+    public ILiveBeansServer getServer() throws RemoteException
     {
         return _currentServer;
     }
 
     @Override
-    public void UpdateLocalCode(ILiveBeansCodeSegment ilbcs) throws RemoteException
+    public void updateLocalCode(ILiveBeansCodeSegment ilbcs) throws RemoteException
     {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
     @Override
-    public void UpdateRemoteCode(ILiveBeansCodeSegment ilbcs) throws RemoteException
+    public void updateRemoteCode(ILiveBeansCodeSegment ilbcs) throws RemoteException
     {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }

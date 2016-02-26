@@ -121,8 +121,8 @@ public class ConnectionDialog extends javax.swing.JDialog
 
             try
             {
-                client.SetName(txtClientName.getText().trim());
-                client.ConnectToServer(txtServerIP.getText().trim());
+                client.setName(txtClientName.getText().trim());
+                client.connectToServer(txtServerIP.getText().trim());
 
                 JOptionPane.showMessageDialog(this.getParent(), "You are now connected");
             } catch (RemoteException ex)
