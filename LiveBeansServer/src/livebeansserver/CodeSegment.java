@@ -13,7 +13,7 @@ import livebeanscommon.ILiveBeansCodeSegment;
 
 /**
  *
- * @author ooddl
+ * @author Luke Dawkes
  */
 public class CodeSegment implements ILiveBeansCodeSegment, Serializable
 {

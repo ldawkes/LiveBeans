@@ -11,16 +11,22 @@ import java.util.Date;
 
 /**
  *
- * @author ooddl
+ * @author Luke Dawkes
  */
 public interface ILiveBeansCodeSegment extends Remote
 {
+
     void SetDocumentOffset(int documentOffset) throws RemoteException;
+
     void SetCodeText(String code) throws RemoteException;
+
     void SetAuthor(ILiveBeansClient author) throws RemoteException;
-    
+
     int GetDocumentOffset() throws RemoteException;
+
     String GetCodeText() throws RemoteException;
+
     ILiveBeansClient GetAuthor() throws RemoteException;
+
     Date GetAuthorDate() throws RemoteException;
 }

@@ -9,7 +9,7 @@ import java.rmi.RemoteException;
 
 /**
  *
- * @author ooddl
+ * @author Luke Dawkes
  */
 public class ClientHeartbeat implements Runnable
 {

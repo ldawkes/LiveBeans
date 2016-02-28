@@ -21,7 +21,7 @@ import livebeanscommon.ILiveBeansServer;
 
 /**
  *
- * @author ooddl
+ * @author Luke Dawkes
  */
 public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansServer, Remote
 {

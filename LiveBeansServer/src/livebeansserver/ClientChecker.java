@@ -10,7 +10,7 @@ import java.util.HashMap;
 
 /**
  *
- * @author ooddl
+ * @author Luke Dawkes
  */
 class ClientChecker extends Thread
 {

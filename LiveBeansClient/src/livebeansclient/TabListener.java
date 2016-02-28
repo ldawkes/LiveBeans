@@ -9,17 +9,18 @@ import java.rmi.RemoteException;
 import java.util.Arrays;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
 
 /**
  *
- * @author ooddl
+ * @author Luke Dawkes
  */
 public class TabListener implements DocumentListener
 {
 
     private static TabListener _instance;
-    private LiveBeansClient _currentClient;
+    private final LiveBeansClient _currentClient;
     private Document _currentDocument;
 
     private TabListener() throws RemoteException
@@ -43,19 +44,33 @@ public class TabListener implements DocumentListener
     }
 
     @Override
-    public void insertUpdate(DocumentEvent e)
+    public synchronized void insertUpdate(DocumentEvent e)
     {
-        System.out.println("Inserted Into Document: " + Arrays.toString(e.getDocument().getRootElements()));
+        try
+        {
+            String text = _currentDocument.getText(e.getOffset(), e.getLength());
+
+            System.out.println("[CLIENT-INFO] Inserted Text: " + text);
+        } catch (BadLocationException ex)
+        {
+            System.out.println("[CLIENT-WARNING] Attemped to grab text from invalid point in document");
+        }
     }
 
     @Override
-    public void removeUpdate(DocumentEvent e)
+    public synchronized void removeUpdate(DocumentEvent e)
     {
-        System.out.println("Removed From Document: " + Arrays.toString(e.getDocument().getRootElements()));
+        System.out.println(String.format("[CLIENT-INFO] Text Removed: (Offset: %s) (Length: %s)", e.getOffset(), e.getLength()));
     }
 
+    /*
+        I've tested various circumstances where this method should logically fire,
+        however it does not;
+            Replacing a section of text by copy+pasting instead causes
+            a removeUpdate event, followed by an insertUpdate event
+     */
     @Override
-    public void changedUpdate(DocumentEvent e)
+    public synchronized void changedUpdate(DocumentEvent e)
     {
         System.out.println("Changed In Document: " + Arrays.toString(e.getDocument().getRootElements()));
     }

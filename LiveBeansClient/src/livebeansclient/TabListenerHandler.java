@@ -22,7 +22,7 @@ import org.openide.windows.WindowManager;
 
 /**
  *
- * @author ooddl
+ * @author Luke Dawkes
  */
 public class TabListenerHandler implements PropertyChangeListener
 {

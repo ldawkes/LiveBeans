@@ -25,7 +25,7 @@ import livebeanscommon.ILiveBeansServer;
 
 /**
  *
- * @author ooddl
+ * @author Luke Dawkes
  */
 public class LiveBeansClient extends UnicastRemoteObject implements Serializable, ILiveBeansClient
 {

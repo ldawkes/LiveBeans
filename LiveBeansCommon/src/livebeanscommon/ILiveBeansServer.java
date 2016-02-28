@@ -10,7 +10,7 @@ import java.rmi.RemoteException;
 
 /**
  *
- * @author ooddl
+ * @author Luke Dawkes
  */
 public interface ILiveBeansServer extends Remote
 {
