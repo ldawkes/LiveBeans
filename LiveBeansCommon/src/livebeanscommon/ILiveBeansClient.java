@@ -23,9 +23,9 @@ public interface ILiveBeansClient extends Remote
 
     void disconnectFromServer() throws RemoteException;
 
-    void updateLocalCode(ILiveBeansCodeSegment newCodeSegment) throws RemoteException;
+    void updateLocalCode(ILiveBeansCodeSegment[] newCodeSegment) throws RemoteException;
 
-    void updateRemoteCode(ILiveBeansCodeSegment newCodeSegment) throws RemoteException;
+    void updateRemoteCode() throws RemoteException;
 
     int getID() throws RemoteException;
 

@@ -20,4 +20,6 @@ public interface ILiveBeansServer extends Remote
     boolean unRegisterClient(ILiveBeansClient client) throws RemoteException;
 
     void sendHeartbeat(int clientID) throws RemoteException;
+
+    void distributeCodeSegments(ILiveBeansCodeSegment[] codeSegments, int clientID) throws RemoteException;
 }

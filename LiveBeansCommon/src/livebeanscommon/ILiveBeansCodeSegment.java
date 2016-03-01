@@ -16,17 +16,21 @@ import java.util.Date;
 public interface ILiveBeansCodeSegment extends Remote
 {
 
-    void SetDocumentOffset(int documentOffset) throws RemoteException;
+    void setDocumentOffset(int documentOffset) throws RemoteException;
 
-    void SetCodeText(String code) throws RemoteException;
+    void setCodeLength(int codeLength) throws RemoteException;
 
-    void SetAuthor(ILiveBeansClient author) throws RemoteException;
+    void setCodeText(String code) throws RemoteException;
 
-    int GetDocumentOffset() throws RemoteException;
+    void setAuthorID(int authorID) throws RemoteException;
 
-    String GetCodeText() throws RemoteException;
+    int getDocumentOffset() throws RemoteException;
 
-    ILiveBeansClient GetAuthor() throws RemoteException;
+    int getCodeLength() throws RemoteException;
 
-    Date GetAuthorDate() throws RemoteException;
+    String getCodeText() throws RemoteException;
+
+    int getAuthorID() throws RemoteException;
+
+    Date getAuthorDate() throws RemoteException;
 }

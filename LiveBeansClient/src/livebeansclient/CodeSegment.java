@@ -8,7 +8,6 @@ package livebeansclient;
 import java.io.Serializable;
 import java.rmi.RemoteException;
 import java.util.Date;
-import livebeanscommon.ILiveBeansClient;
 import livebeanscommon.ILiveBeansCodeSegment;
 
 /**
@@ -18,9 +17,9 @@ import livebeanscommon.ILiveBeansCodeSegment;
 public class CodeSegment implements ILiveBeansCodeSegment, Serializable
 {
 
-    private ILiveBeansClient _author;
+    private int _authorID;
     private Date _authorDate;
-    private int _documentOffset;
+    private int _documentOffset, _codeLength;
     private String _codeText;
 
     public CodeSegment()
@@ -29,44 +28,56 @@ public class CodeSegment implements ILiveBeansCodeSegment, Serializable
     }
 
     @Override
-    public void SetDocumentOffset(int newOffset) throws RemoteException
+    public void setDocumentOffset(int newOffset) throws RemoteException
     {
         _documentOffset = newOffset;
     }
 
     @Override
-    public void SetCodeText(String newCodeText) throws RemoteException
+    public void setCodeText(String newCodeText) throws RemoteException
     {
         _codeText = newCodeText;
     }
 
     @Override
-    public void SetAuthor(ILiveBeansClient newAuthor) throws RemoteException
+    public void setAuthorID(int newAuthorID) throws RemoteException
     {
-        _author = newAuthor;
+        _authorID = newAuthorID;
     }
 
     @Override
-    public int GetDocumentOffset() throws RemoteException
+    public int getDocumentOffset() throws RemoteException
     {
         return _documentOffset;
     }
 
     @Override
-    public String GetCodeText() throws RemoteException
+    public String getCodeText() throws RemoteException
     {
         return _codeText;
     }
 
     @Override
-    public ILiveBeansClient GetAuthor() throws RemoteException
+    public int getAuthorID() throws RemoteException
     {
-        return _author;
+        return _authorID;
     }
 
     @Override
-    public Date GetAuthorDate() throws RemoteException
+    public Date getAuthorDate() throws RemoteException
     {
         return _authorDate;
+    }
+
+    @Override
+    public void setCodeLength(int codeLength) throws RemoteException
+    {
+        _codeLength = codeLength;
+    }
+
+    @Override
+    public int getCodeLength() throws RemoteException
+    {
+        return _codeLength;
     }
 }

@@ -11,10 +11,16 @@ import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import javax.swing.text.Document;
+import javax.swing.text.StyledDocument;
+import org.netbeans.api.project.Project;
+import org.netbeans.api.project.ProjectInformation;
+import org.netbeans.api.project.ui.OpenProjects;
 import org.openide.cookies.EditorCookie;
+import org.openide.filesystems.FileObject;
+import org.openide.loaders.DataObject;
 import org.openide.nodes.Node;
-import org.openide.util.Exceptions;
 import org.openide.windows.Mode;
 import org.openide.windows.TopComponent;
 import org.openide.windows.TopComponent.Registry;
@@ -30,7 +36,7 @@ public class TabListenerHandler implements PropertyChangeListener
     private static TabListenerHandler _instance;
     private final WindowManager _defaultWindowManager;
     private TopComponent _currentTab;
-    private Document _currentTabDocument;
+    private StyledDocument _currentTabDocument;
 
     private TabListenerHandler()
     {
@@ -41,6 +47,11 @@ public class TabListenerHandler implements PropertyChangeListener
         _currentTab = reg.getActivated();
     }
 
+    /**
+     * Gets the singleton instance of TabListenerHandler
+     *
+     * @return TabListenerHandler instance
+     */
     public static TabListenerHandler GetInstance()
     {
         if (_instance == null)
@@ -51,18 +62,21 @@ public class TabListenerHandler implements PropertyChangeListener
         return _instance;
     }
 
+    /**
+     * Sets up the listeners for all opened editors
+     */
     public void setUpListeners()
     {
         for (TopComponent tc : getCurrentOpenedEditors())
         {
-            System.out.println(String.format("Found Component!\r\n______________________\r\n%s\r\n______________________", tc.getDisplayName()));
+            System.out.println(String.format("[CLIENT-INFO] Found Component: %s", tc.getDisplayName()));
 
             if (tc.getActivatedNodes().length == 0)
             {
                 continue;
             }
 
-            System.out.println("Component Has:\r\n");
+            System.out.println("[CLIENT-INFO] Component Has:");
 
             for (Node node : tc.getActivatedNodes())
             {
@@ -71,6 +85,13 @@ public class TabListenerHandler implements PropertyChangeListener
         }
     }
 
+    /**
+     * Gets a collection of currently opened NetBeans editors
+     *
+     * @return Collection of TopComponents
+     * @see Collection
+     * @see TopComponent
+     */
     private Collection<TopComponent> getCurrentOpenedEditors()
     {
         final ArrayList<TopComponent> openedEditors = new ArrayList<>();
@@ -102,25 +123,74 @@ public class TabListenerHandler implements PropertyChangeListener
                 _currentTabDocument.removeDocumentListener(TabListener.getInstance());
             }
 
-            TopComponent newTab = TopComponent.getRegistry().getActivated();
-
-            if (newTab.getActivatedNodes().length == 0)
+            if (activeComponent.getActivatedNodes().length == 0)
             {
                 return;
             }
 
-            _currentTab = newTab;
+            _currentTab = activeComponent;
 
-            _currentTabDocument = _currentTab.getActivatedNodes()[0].getLookup().lookup(EditorCookie.class).getOpenedPanes()[0].getDocument();
+            // Do a check to see if they actually focused on an editor window we can listen to
+            if (_currentTab.getActivatedNodes()[0].getLookup().lookup(EditorCookie.class) == null)
+            {
+                System.out.println("[CLIENT-INFO] Did not focus on an editor window");
+            } else
+            {
+                _currentTabDocument = _currentTab.getActivatedNodes()[0].getLookup().lookup(EditorCookie.class).getDocument();
+                System.out.println("[CLIENT-INFO] New Tab Name: " + _currentTab.getActivatedNodes()[0].getDisplayName());
 
-            TabListener listenerInstance = TabListener.getInstance();
-            listenerInstance.setCurrentDocument(_currentTabDocument);
+                DataObject documentStream = (DataObject) _currentTabDocument.getProperty(Document.StreamDescriptionProperty);
+                FileObject documentFileObject = documentStream.getPrimaryFile();
 
-            _currentTabDocument.addDocumentListener(listenerInstance);
-        } catch (RemoteException ex)
+                TabListener listenerInstance = TabListener.getInstance();
+                listenerInstance.setCurrentDocument(_currentTabDocument);
+                listenerInstance.setCurrentProject(getTabProject(documentFileObject));
+
+                System.out.println("[CLIENT-INFO] Current Tab Document: " + _currentTabDocument);
+
+                _currentTabDocument.addDocumentListener(listenerInstance);
+            }
+        } catch (RemoteException | NullPointerException ex)
         {
-            Exceptions.printStackTrace(ex);
+            System.out.println(String.format("[CLIENT-WARNING] Caught a %s error:\r\n%s", ex.getClass().getName(), ex.toString()));
         }
 
+    }
+
+    /**
+     * Returns a project if the file is associated with one
+     *
+     * @param file The file to find the project for
+     * @return Null if no project is associated, Project if there is one
+     * associated
+     * @see Project
+     */
+    public Project getTabProject(FileObject file)
+    {
+        Project[] openProjects = OpenProjects.getDefault().getOpenProjects();
+
+        if (openProjects.length == 0)
+        {
+            System.out.println("[CLIENT-INFO] No open projects");
+            return null;
+        }
+
+        List<String> parentFolders = Arrays.asList(file.getPath().split("/"));
+        System.out.println(String.format("[ClIENT-INFO] Parent folders:\r\n%s", Arrays.toString(parentFolders.toArray())));
+
+        for (Project project : openProjects)
+        {
+            String projectName = project.getLookup().lookup(ProjectInformation.class).getName();
+            System.out.println("[CLIENT-INFO] Project name: " + projectName);
+
+            if (parentFolders.contains(projectName))
+            {
+                System.out.println("[CLIENT-INFO] File is part of project: " + projectName);
+                return project;
+            }
+        }
+
+        System.out.println("[CLIENT-INFO] Failed to find project");
+        return null;
     }
 }

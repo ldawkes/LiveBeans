@@ -17,6 +17,7 @@ import java.rmi.server.UnicastRemoteObject;
 import java.util.HashMap;
 import java.util.Random;
 import livebeanscommon.ILiveBeansClient;
+import livebeanscommon.ILiveBeansCodeSegment;
 import livebeanscommon.ILiveBeansServer;
 
 /**
@@ -214,5 +215,14 @@ public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansSe
         }
 
         return randNumber;
+    }
+
+    @Override
+    public void distributeCodeSegments(ILiveBeansCodeSegment[] codeSegments, int clientID) throws RemoteException
+    {
+        for (HashMap.Entry<Integer, ILiveBeansClient> client : _connectedClients.entrySet())
+        {
+            client.getValue().updateLocalCode(codeSegments);
+        }
     }
 }
