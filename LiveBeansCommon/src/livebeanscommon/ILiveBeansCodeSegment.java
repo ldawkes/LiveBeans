@@ -5,6 +5,7 @@
  */
 package livebeanscommon;
 
+import java.io.Serializable;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.util.Date;
@@ -13,7 +14,7 @@ import java.util.Date;
  *
  * @author Luke Dawkes
  */
-public interface ILiveBeansCodeSegment extends Remote
+public interface ILiveBeansCodeSegment extends Remote, Serializable
 {
 
     void setDocumentOffset(int documentOffset) throws RemoteException;
@@ -24,6 +25,10 @@ public interface ILiveBeansCodeSegment extends Remote
 
     void setAuthorID(int authorID) throws RemoteException;
 
+    void setDocumentName(String documentName) throws RemoteException;
+
+    void setProject(String projectName) throws RemoteException;
+
     int getDocumentOffset() throws RemoteException;
 
     int getCodeLength() throws RemoteException;
@@ -33,4 +38,8 @@ public interface ILiveBeansCodeSegment extends Remote
     int getAuthorID() throws RemoteException;
 
     Date getAuthorDate() throws RemoteException;
+
+    String getDocumentName() throws RemoteException;
+
+    String getProjectName() throws RemoteException;
 }

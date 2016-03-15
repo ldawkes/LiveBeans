@@ -7,6 +7,7 @@ package livebeanscommon;
 
 import java.rmi.Remote;
 import java.rmi.RemoteException;
+import java.util.List;
 
 /**
  *
@@ -23,7 +24,7 @@ public interface ILiveBeansClient extends Remote
 
     void disconnectFromServer() throws RemoteException;
 
-    void updateLocalCode(ILiveBeansCodeSegment[] newCodeSegment) throws RemoteException;
+    void updateLocalCode(List<? extends ILiveBeansCodeSegment> newCodeSegment) throws RemoteException;
 
     void updateRemoteCode() throws RemoteException;
 

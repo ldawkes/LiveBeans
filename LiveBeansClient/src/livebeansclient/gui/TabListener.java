@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package livebeansclient;
+package livebeansclient.gui;
 
 import java.rmi.RemoteException;
 import java.util.Arrays;
@@ -11,7 +11,9 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
+import livebeansclient.LiveBeansClient;
 import org.netbeans.api.project.Project;
+import org.netbeans.api.project.ProjectInformation;
 
 /**
  *
@@ -21,14 +23,6 @@ public class TabListener implements DocumentListener
 {
 
     private static TabListener _instance;
-    private final LiveBeansClient _currentClient;
-    private Document _currentDocument;
-    private Project _currentProject;
-
-    private TabListener() throws RemoteException
-    {
-        _currentClient = (LiveBeansClient) LiveBeansClient.getInstance();
-    }
 
     public static TabListener getInstance() throws RemoteException
     {
@@ -39,15 +33,31 @@ public class TabListener implements DocumentListener
 
         return _instance;
     }
+    private final LiveBeansClient _currentClient;
+    private Document _currentDocument;
+    private Project _currentProject;
+    private ProjectInformation _currentProjectInformation;
+    private String _currentDocumentName;
+
+    private TabListener() throws RemoteException
+    {
+        _currentClient = (LiveBeansClient) LiveBeansClient.getInstance();
+    }
 
     public void setCurrentDocument(Document newDocument)
     {
         _currentDocument = newDocument;
     }
 
+    public void setCurrentDocumentName(String newDocumentName)
+    {
+        _currentDocumentName = newDocumentName;
+    }
+
     public void setCurrentProject(Project newProject)
     {
         _currentProject = newProject;
+        _currentProjectInformation = _currentProject.getLookup().lookup(ProjectInformation.class);
     }
 
     @Override
@@ -59,10 +69,16 @@ public class TabListener implements DocumentListener
 
             System.out.println(String.format("[CLIENT-INFO] Inserted Text: %s", code));
 
-            _currentClient.addSegmentToBacklog(code, e.getOffset());
+            if (_currentProject == null)
+            {
+                _currentClient.addSegmentToBacklog(_currentDocumentName, code, e.getOffset());
+            } else
+            {
+                _currentClient.addSegmentToBacklog(_currentDocumentName, _currentProjectInformation.getDisplayName(), code, e.getOffset());
+            }
         } catch (BadLocationException ex)
         {
-            System.out.println("[CLIENT-WARNING] Attemped to grab text from invalid point in document");
+            System.out.println("[CLIENT-WARNING] Attempted to grab text from invalid point in document");
         } catch (RemoteException ex)
         {
             System.out.println("[CLIENT-WARNING] Caught RemoteException when adding code to backlog");
@@ -76,7 +92,13 @@ public class TabListener implements DocumentListener
 
         try
         {
-            _currentClient.addSegmentToBacklog(e.getOffset(), e.getLength());
+            if (_currentProject == null)
+            {
+                _currentClient.addSegmentToBacklog(_currentDocumentName, e.getOffset(), e.getLength());
+            } else
+            {
+                _currentClient.addSegmentToBacklog(_currentDocumentName, _currentProjectInformation.getDisplayName(), e.getOffset(), e.getLength());
+            }
         } catch (RemoteException ex)
         {
             System.out.println("[CLIENT-WARNING] Caught RemoteException when adding code to backlog");
@@ -92,6 +114,6 @@ public class TabListener implements DocumentListener
     @Override
     public synchronized void changedUpdate(DocumentEvent e)
     {
-        System.out.println("Changed In Document: " + Arrays.toString(e.getDocument().getRootElements()));
+        System.out.println("[CLIENT-INFO] Changed In Document: " + Arrays.toString(e.getDocument().getRootElements()));
     }
 }

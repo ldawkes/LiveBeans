@@ -3,15 +3,16 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package livebeansclient;
+package livebeansclient.gui;
 
 import java.rmi.RemoteException;
 import javax.swing.JOptionPane;
+import livebeansclient.LiveBeansClient;
 import org.openide.util.Exceptions;
 
 /**
  *
- * @author ooddl
+ * @author Luke Dawkes
  */
 public class ConnectionDialog extends javax.swing.JDialog
 {

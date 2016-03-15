@@ -3,9 +3,10 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package livebeansclient;
+package livebeansclient.threads;
 
 import java.rmi.RemoteException;
+import livebeansclient.LiveBeansClient;
 
 /**
  *
@@ -19,6 +20,7 @@ public class CodeSegmentSynchroniser implements Runnable
     {
         try
         {
+            System.out.println("[CLIENT-INFO] Calling remote code update...");
             LiveBeansClient.getInstance().updateRemoteCode();
         } catch (RemoteException ex)
         {

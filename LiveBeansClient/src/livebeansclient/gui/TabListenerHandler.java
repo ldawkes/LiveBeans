@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package livebeansclient;
+package livebeansclient.gui;
 
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
@@ -34,18 +34,6 @@ public class TabListenerHandler implements PropertyChangeListener
 {
 
     private static TabListenerHandler _instance;
-    private final WindowManager _defaultWindowManager;
-    private TopComponent _currentTab;
-    private StyledDocument _currentTabDocument;
-
-    private TabListenerHandler()
-    {
-        _defaultWindowManager = WindowManager.getDefault();
-
-        Registry reg = TopComponent.getRegistry();
-        reg.addPropertyChangeListener(this);
-        _currentTab = reg.getActivated();
-    }
 
     /**
      * Gets the singleton instance of TabListenerHandler
@@ -60,6 +48,18 @@ public class TabListenerHandler implements PropertyChangeListener
         }
 
         return _instance;
+    }
+    private final WindowManager _defaultWindowManager;
+    private TopComponent _currentTab;
+    private StyledDocument _currentTabDocument;
+
+    private TabListenerHandler()
+    {
+        _defaultWindowManager = WindowManager.getDefault();
+
+        Registry reg = TopComponent.getRegistry();
+        reg.addPropertyChangeListener(this);
+        _currentTab = reg.getActivated();
     }
 
     /**
@@ -144,6 +144,7 @@ public class TabListenerHandler implements PropertyChangeListener
 
                 TabListener listenerInstance = TabListener.getInstance();
                 listenerInstance.setCurrentDocument(_currentTabDocument);
+                listenerInstance.setCurrentDocumentName(_currentTab.getActivatedNodes()[0].getDisplayName());
                 listenerInstance.setCurrentProject(getTabProject(documentFileObject));
 
                 System.out.println("[CLIENT-INFO] Current Tab Document: " + _currentTabDocument);

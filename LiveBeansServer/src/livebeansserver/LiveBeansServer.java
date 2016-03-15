@@ -15,7 +15,11 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Random;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import livebeanscommon.ILiveBeansClient;
 import livebeanscommon.ILiveBeansCodeSegment;
 import livebeanscommon.ILiveBeansServer;
@@ -27,17 +31,12 @@ import livebeanscommon.ILiveBeansServer;
 public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansServer, Remote
 {
 
-    private HashMap<Integer, ILiveBeansClient> _connectedClients;
-    private HashMap<Integer, Long> _clientHeartbeats;
-
     private static LiveBeansServer _instance;
 
-    private LiveBeansServer() throws RemoteException
-    {
-        _connectedClients = new HashMap<>();
-        _clientHeartbeats = new HashMap<>();
-    }
-
+    /**
+     *
+     * @return @throws RemoteException
+     */
     public static LiveBeansServer getInstance() throws RemoteException
     {
         if (_instance == null)
@@ -49,7 +48,7 @@ public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansSe
     }
 
     /**
-     * @param args the command line arguments
+     * @param args The command line arguments
      * @throws java.rmi.RemoteException
      * @throws java.net.MalformedURLException
      * @throws java.net.UnknownHostException
@@ -58,6 +57,12 @@ public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansSe
     {
         try
         {
+            if (System.getSecurityManager() == null)
+            {
+                System.setProperty("java.security.policy", "src/livebeansserver/security/server.policy");
+                System.setSecurityManager(new SecurityManager());
+            }
+
             InetAddress localHost = InetAddress.getLocalHost();
             String ipAddress = localHost.getHostAddress();
             System.out.println(String.format("[SERVER-SETUP] Using LocalHost: %s\r\n[SERVER-SETUP] Using Host Address (%s)", localHost.toString(), ipAddress));
@@ -66,22 +71,49 @@ public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansSe
 
             Naming.rebind("LiveBeansServer", getInstance());
             System.out.println("[SERVER-SETUP] LiveBeansServer bound to host address");
-
-            ClientChecker clientChecker = ClientChecker.getInstance();
-
-            clientChecker.setDaemon(true);
-            clientChecker.start();
         } catch (RemoteException ex)
         {
             System.out.println("[SERVER-ERROR] There was a problem setting up the server.\r\nError: " + ex.getMessage());
         }
     }
 
+    private final HashMap<Integer, ILiveBeansClient> _connectedClients;
+    private final HashMap<Integer, Long> _clientHeartbeats;
+    private ScheduledExecutorService _scheduler;
+
+    private LiveBeansServer() throws RemoteException
+    {
+        _connectedClients = new HashMap<>();
+        _clientHeartbeats = new HashMap<>();
+
+        _scheduler = Executors.newScheduledThreadPool(1);
+        _scheduler.scheduleAtFixedRate(ClientChecker.getInstance(), 1, 5, TimeUnit.SECONDS);
+
+        if (System.getSecurityManager() == null)
+        {
+            System.setProperty("java.security.policy", "security/server.policy");
+            System.setSecurityManager(new SecurityManager());
+        }
+    }
+
+    /**
+     * Gets a HashMap of client heartbeats on the server
+     *
+     * @return HashMap<Integer, Long>
+     * @see HashMap
+     */
     public HashMap<Integer, Long> getClientHeartbeats()
     {
         return _clientHeartbeats;
     }
 
+    /**
+     * Registers the given client on the server
+     *
+     * @param client The client interface to register on the server
+     * @return Returns true if successful registration, false if otherwise
+     * @throws RemoteException
+     */
     @Override
     public boolean registerClient(ILiveBeansClient client) throws RemoteException
     {
@@ -100,6 +132,13 @@ public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansSe
         }
     }
 
+    /**
+     * Unregisters a client with the server
+     *
+     * @param client The client interface to remove from the server
+     * @return Returns true if successful, false if otherwise
+     * @throws RemoteException
+     */
     @Override
     public boolean unRegisterClient(ILiveBeansClient client) throws RemoteException
     {
@@ -117,6 +156,13 @@ public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansSe
         }
     }
 
+    /**
+     * Unregisters a client with the server
+     *
+     * @param clientID The ID of the client to unregister
+     * @return Returns true if successful, false if otherwise
+     * @throws RemoteException
+     */
     public boolean unRegisterClient(Integer clientID) throws RemoteException
     {
         ILiveBeansClient client = getClientByID(clientID);
@@ -139,6 +185,13 @@ public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansSe
         }
     }
 
+    /**
+     * Updates a client heartbeat on the server to let the server know they are
+     * still connected
+     *
+     * @param clientID The clientID with which to update a heartbeat
+     * @throws RemoteException
+     */
     @Override
     public void sendHeartbeat(int clientID) throws RemoteException
     {
@@ -147,8 +200,6 @@ public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansSe
             if (storedID == clientID)
             {
                 _clientHeartbeats.put(storedID, System.nanoTime());
-
-                System.out.println(String.format("[SERVER-LOG] Updated client %s with a heartbeat", getClientByID(clientID).getName()));
                 return;
             }
         }
@@ -217,12 +268,29 @@ public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansSe
         return randNumber;
     }
 
+    /**
+     * Tells the server to distribute the code segments between all clients
+     *
+     * @param codeSegments The list of code segments that will be sent to the
+     * server
+     * @param clientID The author of the code segments
+     * @throws RemoteException
+     */
     @Override
-    public void distributeCodeSegments(ILiveBeansCodeSegment[] codeSegments, int clientID) throws RemoteException
+    public void distributeCodeSegments(List<? extends ILiveBeansCodeSegment> codeSegments, int clientID) throws RemoteException
     {
-        for (HashMap.Entry<Integer, ILiveBeansClient> client : _connectedClients.entrySet())
-        {
-            client.getValue().updateLocalCode(codeSegments);
-        }
+        System.out.println(String.format("[SERVER-INFO] Received %d code segment(s) from client %d", codeSegments.size(), clientID));
+
+        _connectedClients.entrySet().stream().filter(client -> client.getKey() != clientID).forEach((client)
+                ->
+                {
+                    try
+                    {
+                        client.getValue().updateLocalCode(codeSegments);
+                    } catch (RemoteException ex)
+                    {
+                        System.out.println("[SERVER-WARNING] Found a non-responsive client");
+                    }
+        });
     }
 }

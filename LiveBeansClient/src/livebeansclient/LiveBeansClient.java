@@ -13,6 +13,7 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -20,6 +21,9 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import livebeansclient.gui.TabListenerHandler;
+import livebeansclient.threads.ClientHeartbeat;
+import livebeansclient.threads.CodeSegmentSynchroniser;
 import livebeanscommon.ILiveBeansClient;
 import livebeanscommon.ILiveBeansCodeSegment;
 import livebeanscommon.ILiveBeansServer;
@@ -30,17 +34,6 @@ import livebeanscommon.ILiveBeansServer;
  */
 public class LiveBeansClient extends UnicastRemoteObject implements Serializable, ILiveBeansClient
 {
-
-    private int _clientID;
-    private String _clientName;
-    private final String _ipAddressRegex;
-    private final Pattern _ipAddressRegexPattern;
-    private ILiveBeansServer _currentServer;
-
-    private final ScheduledExecutorService _scheduler;
-    private ScheduledFuture _heartbeatSchedule, _codeSynchroniseSchedule;
-
-    private List<CodeSegment> _segmentBacklog;
 
     private static LiveBeansClient _instance;
 
@@ -54,27 +47,106 @@ public class LiveBeansClient extends UnicastRemoteObject implements Serializable
         return _instance;
     }
 
+    private int _clientID;
+    private String _clientName;
+    private final String _ipAddressRegex;
+    private final Pattern _ipAddressRegexPattern;
+    private ILiveBeansServer _currentServer;
+
+    private final ScheduledExecutorService _scheduler;
+    private ScheduledFuture _heartbeatSchedule, _codeSynchroniseSchedule;
+
+    private List<ILiveBeansCodeSegment> _segmentBacklog;
+
     private LiveBeansClient() throws RemoteException
     {
         _ipAddressRegex = "(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)";
         _ipAddressRegexPattern = Pattern.compile(_ipAddressRegex);
 
         _scheduler = Executors.newScheduledThreadPool(2);
+        _segmentBacklog = new ArrayList<>();
+
+        if (System.getSecurityManager() == null)
+        {
+            System.setProperty("java.security.policy", "security/client.policy");
+            System.setSecurityManager(new SecurityManager());
+        }
     }
 
-    public void addSegmentToBacklog(String code, int codeOffset) throws RemoteException
+    /* Code Segment Methods */
+    /**
+     * Adds an addition segment to the backlog
+     *
+     * @param documentName The name of the document the code is in
+     * @param projectName The name of the project the document is in
+     * @param code The code to be updated
+     * @param codeOffset The offset of the updated code within the document
+     * @throws RemoteException
+     */
+    public void addSegmentToBacklog(String documentName, String projectName, String code, int codeOffset) throws RemoteException
     {
         CodeSegment codeSegment = new CodeSegment();
         codeSegment.setAuthorID(_clientID);
+        codeSegment.setDocumentName(documentName);
+        codeSegment.setProject(projectName);
         codeSegment.setCodeText(code);
         codeSegment.setDocumentOffset(codeOffset);
 
         _segmentBacklog.add(codeSegment);
     }
 
-    public void addSegmentToBacklog(int codeOffset, int codeLength) throws RemoteException
+    /**
+     * Adds a removal segment to the backlog
+     *
+     * @param documentName The name of the document the code is in
+     * @param projectName The name of the project the document is in
+     * @param codeOffset The offset of the updated code within the document
+     * @param codeLength The length of the updated code
+     * @throws RemoteException
+     */
+    public void addSegmentToBacklog(String documentName, String projectName, int codeOffset, int codeLength) throws RemoteException
     {
         CodeSegment codeSegment = new CodeSegment();
+        codeSegment.setAuthorID(_clientID);
+        codeSegment.setDocumentName(documentName);
+        codeSegment.setProject(projectName);
+        codeSegment.setDocumentOffset(codeOffset);
+        codeSegment.setCodeLength(codeLength);
+
+        _segmentBacklog.add(codeSegment);
+    }
+
+    /**
+     * Adds an addition segment to the backlog
+     *
+     * @param documentName The name of the document the code is in
+     * @param code The code to be updated
+     * @param codeOffset The offset of the code within the document
+     * @throws RemoteException
+     */
+    public void addSegmentToBacklog(String documentName, String code, int codeOffset) throws RemoteException
+    {
+        CodeSegment codeSegment = new CodeSegment();
+        codeSegment.setAuthorID(_clientID);
+        codeSegment.setDocumentName(documentName);
+        codeSegment.setCodeText(code);
+        codeSegment.setDocumentOffset(codeOffset);
+
+        _segmentBacklog.add(codeSegment);
+    }
+
+    /**
+     * Adds a removal segment to the backlog
+     *
+     * @param documentName The name of the document the code is in
+     * @param codeOffset The offset of the code within the document
+     * @param codeLength The length of the updated code
+     * @throws RemoteException
+     */
+    public void addSegmentToBacklog(String documentName, int codeOffset, int codeLength) throws RemoteException
+    {
+        CodeSegment codeSegment = new CodeSegment();
+        codeSegment.setDocumentName(documentName);
         codeSegment.setAuthorID(_clientID);
         codeSegment.setDocumentOffset(codeOffset);
         codeSegment.setCodeLength(codeLength);
@@ -101,7 +173,7 @@ public class LiveBeansClient extends UnicastRemoteObject implements Serializable
 
         if (regexMatcher.matches())
         {
-            System.out.println(String.format("IP Address (%s) matches regex pattern", serverAddress));
+            System.out.println(String.format("[CLIENT-INFO] IP Address (%s) matches regex pattern", serverAddress));
         }
 
         try
@@ -112,16 +184,16 @@ public class LiveBeansClient extends UnicastRemoteObject implements Serializable
             _currentServer.registerClient(this);
 
             _heartbeatSchedule = _scheduler.scheduleAtFixedRate(new ClientHeartbeat(), 2, 2, TimeUnit.SECONDS);
-            _codeSynchroniseSchedule = _scheduler.scheduleAtFixedRate(new CodeSegmentSynchroniser(), 1, 2, TimeUnit.SECONDS);
+            _codeSynchroniseSchedule = _scheduler.scheduleAtFixedRate(new CodeSegmentSynchroniser(), 2, 2, TimeUnit.SECONDS);
 
-            System.out.println("Found Server.");
+            System.out.println("[CLIENT-INFO] Found Server.");
         } catch (NotBoundException | MalformedURLException ex)
         {
             System.out.println(ex.getMessage());
             return;
         }
 
-        System.out.println(String.format("Current server is %s", _currentServer == null ? "null" : "not null"));
+        System.out.println(String.format("[CLIENT-INFO] Current server is %s", _currentServer == null ? "null" : "not null"));
 
         TabListenerHandler.GetInstance().setUpListeners();
     }
@@ -159,13 +231,13 @@ public class LiveBeansClient extends UnicastRemoteObject implements Serializable
     }
 
     @Override
-    public void updateLocalCode(ILiveBeansCodeSegment[] codeSegments) throws RemoteException
+    public void updateLocalCode(List<? extends ILiveBeansCodeSegment> codeSegments) throws RemoteException
     {
-        System.out.println(String.format("[CLIENT-LOG] Received collection of %s code segments", codeSegments.length));
+        System.out.println(String.format("[CLIENT-LOG] Received collection of %d code segments:", codeSegments.size()));
 
-        for (CodeSegment codeSegment : (CodeSegment[]) codeSegments)
+        for (ILiveBeansCodeSegment codeSegment : codeSegments)
         {
-            System.out.println("[CLIENT-LOG] Code segment contains: " + codeSegment.getCodeText());
+            System.out.println(String.format("\t[CLIENT-LOG] Code segment contains: %s", codeSegment.getCodeText()));
         }
     }
 
@@ -174,17 +246,23 @@ public class LiveBeansClient extends UnicastRemoteObject implements Serializable
     {
         if (_segmentBacklog.isEmpty())
         {
+            System.out.println("[CLIENT-INFO] Attempted to synchronise an empty code backlog");
             return;
         }
 
+        System.out.println("[CLIENT-INFO] Synchronising...");
+
         try
         {
-            _currentServer.distributeCodeSegments((CodeSegment[]) _segmentBacklog.toArray(), _clientID);
+            _currentServer.distributeCodeSegments(_segmentBacklog, _clientID);
+
+            System.out.println(String.format("[CLIENT-INFO] Synchronised %d code segment(s)", _segmentBacklog.size()));
+
             _segmentBacklog.clear();
 
         } catch (RemoteException ex)
         {
-            System.out.println("[CLIENT-WARNING] There was an error synchronising the code segments");
+            System.out.println("[CLIENT-WARNING] There was an error synchronising the code segments\r\n" + ex);
         }
     }
 }

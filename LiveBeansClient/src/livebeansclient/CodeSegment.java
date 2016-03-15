@@ -5,8 +5,8 @@
  */
 package livebeansclient;
 
-import java.io.Serializable;
 import java.rmi.RemoteException;
+import java.rmi.server.UnicastRemoteObject;
 import java.util.Date;
 import livebeanscommon.ILiveBeansCodeSegment;
 
@@ -14,15 +14,14 @@ import livebeanscommon.ILiveBeansCodeSegment;
  *
  * @author Luke Dawkes
  */
-public class CodeSegment implements ILiveBeansCodeSegment, Serializable
+public class CodeSegment extends UnicastRemoteObject implements ILiveBeansCodeSegment
 {
 
-    private int _authorID;
-    private Date _authorDate;
-    private int _documentOffset, _codeLength;
-    private String _codeText;
+    private int _authorID, _documentOffset, _codeLength;
+    private final Date _authorDate;
+    private String _codeText, _documentName, _projectName;
 
-    public CodeSegment()
+    public CodeSegment() throws RemoteException
     {
         _authorDate = new Date();
     }
@@ -79,5 +78,29 @@ public class CodeSegment implements ILiveBeansCodeSegment, Serializable
     public int getCodeLength() throws RemoteException
     {
         return _codeLength;
+    }
+
+    @Override
+    public void setDocumentName(String newDocumentName) throws RemoteException
+    {
+        _documentName = newDocumentName;
+    }
+
+    @Override
+    public void setProject(String newProjectName) throws RemoteException
+    {
+        _projectName = newProjectName;
+    }
+
+    @Override
+    public String getDocumentName() throws RemoteException
+    {
+        return _documentName;
+    }
+
+    @Override
+    public String getProjectName() throws RemoteException
+    {
+        return _projectName;
     }
 }

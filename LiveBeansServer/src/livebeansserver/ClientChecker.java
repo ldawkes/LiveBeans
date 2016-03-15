@@ -12,17 +12,10 @@ import java.util.HashMap;
  *
  * @author Luke Dawkes
  */
-class ClientChecker extends Thread
+class ClientChecker implements Runnable
 {
 
-    private long _startTime, _estimatedTime;
-    private int _checkTime = 5;
-
     private static ClientChecker _instance;
-
-    private ClientChecker()
-    {
-    }
 
     public static ClientChecker getInstance()
     {
@@ -33,43 +26,31 @@ class ClientChecker extends Thread
 
         return _instance;
     }
+    private final int _checkTime = 5;
+
+    private ClientChecker()
+    {
+    }
 
     @Override
     public void run()
     {
-        while (true)
+        try
         {
-            _estimatedTime = (System.nanoTime() - _startTime) / 1000000000;
+            HashMap<Integer, Long> clientHeartbeats = LiveBeansServer.getInstance().getClientHeartbeats();
 
-            if (_estimatedTime > _checkTime)
+            for (HashMap.Entry<Integer, Long> heartbeat : clientHeartbeats.entrySet())
             {
-                System.out.println("[SERVER-LOG] Checking for disconnected clients...");
-
-                try
+                if ((System.nanoTime() - heartbeat.getValue()) / 1000000000 > _checkTime)
                 {
-                    HashMap<Integer, Long> clientHeartbeats = LiveBeansServer.getInstance().getClientHeartbeats();
+                    System.out.println("[SERVER-LOG] Found a disconnected/crashed client, removing...");
 
-                    for (HashMap.Entry<Integer, Long> heartbeat : clientHeartbeats.entrySet())
-                    {
-                        if ((System.nanoTime() - heartbeat.getValue()) / 1000000000 > _checkTime)
-                        {
-                            System.out.println("[SERVER-LOG] Found a disconnected/crashed client, removing...");
-
-                            LiveBeansServer.getInstance().unRegisterClient(heartbeat.getKey());
-                        }
-                    }
-                } catch (RemoteException ex)
-                {
-                    System.out.println("[SERVER-ERROR] There was a problem updating the client list:\r\n\r\n" + ex.toString());
+                    LiveBeansServer.getInstance().unRegisterClient(heartbeat.getKey());
                 }
-
-                updateTime();
             }
+        } catch (RemoteException ex)
+        {
+            System.out.println("[SERVER-ERROR] There was a problem updating the client list:\r\n\r\n" + ex.toString());
         }
-    }
-
-    private void updateTime()
-    {
-        _startTime = System.nanoTime();
     }
 }

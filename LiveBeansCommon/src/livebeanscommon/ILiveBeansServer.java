@@ -7,6 +7,7 @@ package livebeanscommon;
 
 import java.rmi.Remote;
 import java.rmi.RemoteException;
+import java.util.List;
 
 /**
  *
@@ -21,5 +22,5 @@ public interface ILiveBeansServer extends Remote
 
     void sendHeartbeat(int clientID) throws RemoteException;
 
-    void distributeCodeSegments(ILiveBeansCodeSegment[] codeSegments, int clientID) throws RemoteException;
+    void distributeCodeSegments(List<? extends ILiveBeansCodeSegment> codeSegments, int clientID) throws RemoteException;
 }
