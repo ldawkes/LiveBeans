@@ -7,6 +7,7 @@ package livebeansclient.gui;
 
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.io.IOException;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -16,11 +17,13 @@ import javax.swing.text.Document;
 import javax.swing.text.StyledDocument;
 import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ProjectInformation;
+import org.netbeans.api.project.ProjectUtils;
 import org.netbeans.api.project.ui.OpenProjects;
 import org.openide.cookies.EditorCookie;
 import org.openide.filesystems.FileObject;
 import org.openide.loaders.DataObject;
 import org.openide.nodes.Node;
+import org.openide.util.Exceptions;
 import org.openide.windows.Mode;
 import org.openide.windows.TopComponent;
 import org.openide.windows.TopComponent.Registry;
@@ -40,7 +43,7 @@ public class TabListenerHandler implements PropertyChangeListener
      *
      * @return TabListenerHandler instance
      */
-    public static TabListenerHandler GetInstance()
+    public static TabListenerHandler getInstance()
     {
         if (_instance == null)
         {
@@ -49,17 +52,16 @@ public class TabListenerHandler implements PropertyChangeListener
 
         return _instance;
     }
-    private final WindowManager _defaultWindowManager;
+
     private TopComponent _currentTab;
     private StyledDocument _currentTabDocument;
+    private final ArrayList<StyledDocument> _openedDocuments;
+    private final WindowManager _defaultWindowManager;
 
     private TabListenerHandler()
     {
         _defaultWindowManager = WindowManager.getDefault();
-
-        Registry reg = TopComponent.getRegistry();
-        reg.addPropertyChangeListener(this);
-        _currentTab = reg.getActivated();
+        _openedDocuments = new ArrayList<>();
     }
 
     /**
@@ -67,6 +69,11 @@ public class TabListenerHandler implements PropertyChangeListener
      */
     public void setUpListeners()
     {
+        Registry reg = TopComponent.getRegistry();
+        reg.addPropertyChangeListener(this);
+
+        _currentTab = reg.getActivated();
+
         for (TopComponent tc : getCurrentOpenedEditors())
         {
             System.out.println(String.format("[CLIENT-INFO] Found Component: %s", tc.getDisplayName()));
@@ -96,6 +103,7 @@ public class TabListenerHandler implements PropertyChangeListener
     {
         final ArrayList<TopComponent> openedEditors = new ArrayList<>();
         final WindowManager windowManager = WindowManager.getDefault();
+
         for (Mode mode : windowManager.getModes())
         {
             if (windowManager.isEditorMode(mode))
@@ -129,14 +137,17 @@ public class TabListenerHandler implements PropertyChangeListener
             }
 
             _currentTab = activeComponent;
+            Node activeNode = _currentTab.getActivatedNodes()[0];
 
             // Do a check to see if they actually focused on an editor window we can listen to
-            if (_currentTab.getActivatedNodes()[0].getLookup().lookup(EditorCookie.class) == null)
+            if (!isDocument(activeNode))
             {
                 System.out.println("[CLIENT-INFO] Did not focus on an editor window");
-            } else
+            }
+            else
             {
-                _currentTabDocument = _currentTab.getActivatedNodes()[0].getLookup().lookup(EditorCookie.class).getDocument();
+                _currentTabDocument = activeNode.getLookup().lookup(EditorCookie.class).getDocument();
+                _openedDocuments.add(_currentTabDocument);
                 System.out.println("[CLIENT-INFO] New Tab Name: " + _currentTab.getActivatedNodes()[0].getDisplayName());
 
                 DataObject documentStream = (DataObject) _currentTabDocument.getProperty(Document.StreamDescriptionProperty);
@@ -151,7 +162,8 @@ public class TabListenerHandler implements PropertyChangeListener
 
                 _currentTabDocument.addDocumentListener(listenerInstance);
             }
-        } catch (RemoteException | NullPointerException ex)
+        }
+        catch (RemoteException | NullPointerException ex)
         {
             System.out.println(String.format("[CLIENT-WARNING] Caught a %s error:\r\n%s", ex.getClass().getName(), ex.toString()));
         }
@@ -181,7 +193,7 @@ public class TabListenerHandler implements PropertyChangeListener
 
         for (Project project : openProjects)
         {
-            String projectName = project.getLookup().lookup(ProjectInformation.class).getName();
+            String projectName = ProjectUtils.getInformation(project).getName();
             System.out.println("[CLIENT-INFO] Project name: " + projectName);
 
             if (parentFolders.contains(projectName))
@@ -193,5 +205,56 @@ public class TabListenerHandler implements PropertyChangeListener
 
         System.out.println("[CLIENT-INFO] Failed to find project");
         return null;
+    }
+
+    public ArrayList<StyledDocument> getOpenedDocuments()
+    {
+        return _openedDocuments;
+    }
+
+    public StyledDocument getOpenDocument(String documentName)
+    {
+        EditorCookie nodeCookie = getEditorCookieForDocument(documentName);
+        
+        if (nodeCookie == null) {
+            System.out.println("[CLIENT-WARNING] Attempted to retrieve null document");
+            return null;
+        }
+        
+        return nodeCookie.getDocument();
+    }
+
+    private EditorCookie getEditorCookieForDocument(String documentName)
+    {
+        Node[] openNodes = _currentTab.getActivatedNodes();
+
+        for (Node openNode : openNodes)
+        {
+            if (isDocument(openNode) && openNode.getDisplayName().equals(documentName))
+            {
+                return openNode.getLookup().lookup(EditorCookie.class);
+            }
+        }
+
+        return null;
+    }
+
+    public void saveDocument(String documentName)
+    {
+        EditorCookie nodeCookie = getEditorCookieForDocument(documentName);
+        
+        try
+        {
+            nodeCookie.saveDocument();
+        }
+        catch (IOException ex)
+        {
+            System.out.println("[CLIENT-WARNING] Failed to save document");
+        }
+    }
+
+    private boolean isDocument(Node node)
+    {
+        return node.getLookup().lookup(EditorCookie.class) != null;
     }
 }

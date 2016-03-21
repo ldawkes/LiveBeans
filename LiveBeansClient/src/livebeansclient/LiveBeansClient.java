@@ -21,12 +21,18 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.StyledDocument;
+import livebeansclient.gui.TabListener;
 import livebeansclient.gui.TabListenerHandler;
 import livebeansclient.threads.ClientHeartbeat;
 import livebeansclient.threads.CodeSegmentSynchroniser;
 import livebeanscommon.ILiveBeansClient;
 import livebeanscommon.ILiveBeansCodeSegment;
 import livebeanscommon.ILiveBeansServer;
+import org.openide.util.Exceptions;
 
 /**
  *
@@ -37,11 +43,18 @@ public class LiveBeansClient extends UnicastRemoteObject implements Serializable
 
     private static LiveBeansClient _instance;
 
-    public static ILiveBeansClient getInstance() throws RemoteException
+    public static ILiveBeansClient getInstance()
     {
         if (_instance == null)
         {
-            _instance = new LiveBeansClient();
+            try
+            {
+                _instance = new LiveBeansClient();
+            }
+            catch (RemoteException ex)
+            {
+                Exceptions.printStackTrace(ex);
+            }
         }
 
         return _instance;
@@ -49,14 +62,16 @@ public class LiveBeansClient extends UnicastRemoteObject implements Serializable
 
     private int _clientID;
     private String _clientName;
+    private ILiveBeansServer _currentServer;
     private final String _ipAddressRegex;
     private final Pattern _ipAddressRegexPattern;
-    private ILiveBeansServer _currentServer;
+    private TabListenerHandler _tabListenerHandler;
+    private TabListener _tabListener;
 
     private final ScheduledExecutorService _scheduler;
     private ScheduledFuture _heartbeatSchedule, _codeSynchroniseSchedule;
 
-    private List<ILiveBeansCodeSegment> _segmentBacklog;
+    private final List<ILiveBeansCodeSegment> _segmentBacklog;
 
     private LiveBeansClient() throws RemoteException
     {
@@ -184,10 +199,14 @@ public class LiveBeansClient extends UnicastRemoteObject implements Serializable
             _currentServer.registerClient(this);
 
             _heartbeatSchedule = _scheduler.scheduleAtFixedRate(new ClientHeartbeat(), 2, 2, TimeUnit.SECONDS);
-            _codeSynchroniseSchedule = _scheduler.scheduleAtFixedRate(new CodeSegmentSynchroniser(), 2, 2, TimeUnit.SECONDS);
+            _codeSynchroniseSchedule = _scheduler.scheduleAtFixedRate(new CodeSegmentSynchroniser(), 1, 1, TimeUnit.SECONDS);
+
+            _tabListenerHandler = TabListenerHandler.getInstance();
+            _tabListener = TabListener.getInstance();
 
             System.out.println("[CLIENT-INFO] Found Server.");
-        } catch (NotBoundException | MalformedURLException ex)
+        }
+        catch (NotBoundException | MalformedURLException ex)
         {
             System.out.println(ex.getMessage());
             return;
@@ -195,20 +214,23 @@ public class LiveBeansClient extends UnicastRemoteObject implements Serializable
 
         System.out.println(String.format("[CLIENT-INFO] Current server is %s", _currentServer == null ? "null" : "not null"));
 
-        TabListenerHandler.GetInstance().setUpListeners();
+        _tabListenerHandler.setUpListeners();
     }
 
     @Override
-    public void disconnectFromServer() throws RemoteException
+    public void disconnectFromServer()
     {
         try
         {
             _currentServer.unRegisterClient(this);
-
-            _scheduler.shutdown();
-        } catch (RemoteException ex)
+        }
+        catch (RemoteException ex)
         {
             System.out.println(ex.getMessage());
+        }
+        finally
+        {
+            _scheduler.shutdown();
         }
     }
 
@@ -231,22 +253,77 @@ public class LiveBeansClient extends UnicastRemoteObject implements Serializable
     }
 
     @Override
-    public void updateLocalCode(List<? extends ILiveBeansCodeSegment> codeSegments) throws RemoteException
+    public void updateLocalCode(List<ILiveBeansCodeSegment> codeSegments) throws RemoteException
     {
         System.out.println(String.format("[CLIENT-LOG] Received collection of %d code segments:", codeSegments.size()));
 
         for (ILiveBeansCodeSegment codeSegment : codeSegments)
         {
+            String documentName = codeSegment.getDocumentName();
+            StyledDocument document = _tabListenerHandler.getOpenDocument(documentName);
+
+            if (document != null)
+            {
+                String code = codeSegment.getCodeText();
+
+                if (code == null || code.equals(""))
+                {
+
+                    // Because no code has been sent across, assume that
+                    // the server wants a segment removed from all clients
+                    try
+                    {
+                        _tabListener.setPaused(true);
+                        document.remove(codeSegment.getDocumentOffset(), codeSegment.getCodeLength());
+                        
+                        System.out.println("[CLIENT-INFO] Removed code from document");
+                    }
+                    catch (BadLocationException ex)
+                    {
+                        System.out.println("[CLIENT-WARNING] Failed to remove code from document\r\n" + ex);
+                    }
+                    finally
+                    {
+                        _tabListener.setPaused(false);
+                    }
+                }
+                else
+                {
+
+                    // Code is contained within the code segment, so
+                    // use the variables to add code to local document
+                    try
+                    {
+                        _tabListener.setPaused(true);
+                        document.insertString(codeSegment.getDocumentOffset(), code, document.getLogicalStyle(codeSegment.getDocumentOffset()));
+                        System.out.println("[CLIENT-INFO] Added code to document");
+                    }
+                    catch (BadLocationException ex)
+                    {
+                        System.out.println("[CLIENT-WARNING] Failed to add code to document\r\n" + ex);
+                    }
+                    finally
+                    {
+                        _tabListener.setPaused(false);
+                    }
+                }
+            }
+            else
+            {
+                // Edit local file
+            }
+            
+            _tabListenerHandler.saveDocument(codeSegment.getDocumentName());
+
             System.out.println(String.format("\t[CLIENT-LOG] Code segment contains: %s", codeSegment.getCodeText()));
         }
     }
 
     @Override
-    public void updateRemoteCode() throws RemoteException
+    public void updateRemoteCode()
     {
         if (_segmentBacklog.isEmpty())
         {
-            System.out.println("[CLIENT-INFO] Attempted to synchronise an empty code backlog");
             return;
         }
 
@@ -260,9 +337,15 @@ public class LiveBeansClient extends UnicastRemoteObject implements Serializable
 
             _segmentBacklog.clear();
 
-        } catch (RemoteException ex)
+        }
+        catch (RemoteException ex)
         {
             System.out.println("[CLIENT-WARNING] There was an error synchronising the code segments\r\n" + ex);
         }
+    }
+
+    public void displayDialog(String title, String message, int messageType)
+    {
+        JOptionPane.showMessageDialog(new JFrame(), message, title, messageType);
     }
 }

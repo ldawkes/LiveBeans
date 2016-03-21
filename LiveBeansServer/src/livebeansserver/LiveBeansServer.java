@@ -71,7 +71,8 @@ public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansSe
 
             Naming.rebind("LiveBeansServer", getInstance());
             System.out.println("[SERVER-SETUP] LiveBeansServer bound to host address");
-        } catch (RemoteException ex)
+        }
+        catch (RemoteException ex)
         {
             System.out.println("[SERVER-ERROR] There was a problem setting up the server.\r\nError: " + ex.getMessage());
         }
@@ -79,7 +80,7 @@ public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansSe
 
     private final HashMap<Integer, ILiveBeansClient> _connectedClients;
     private final HashMap<Integer, Long> _clientHeartbeats;
-    private ScheduledExecutorService _scheduler;
+    private final ScheduledExecutorService _scheduler;
 
     private LiveBeansServer() throws RemoteException
     {
@@ -126,7 +127,8 @@ public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansSe
 
             System.out.println(String.format("[SERVER-LOG] Client %s(%d) connected to server", client.getName(), client.getID()));
             return true;
-        } else
+        }
+        else
         {
             return false;
         }
@@ -149,7 +151,8 @@ public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansSe
 
             System.out.println("[SERVER-LOG] Client disconnected from server");
             return true;
-        } else
+        }
+        else
         {
             System.out.println("[SERVER-WARNING] Attempted to remove a non-existent client");
             return false;
@@ -178,7 +181,8 @@ public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansSe
             _connectedClients.remove(clientID);
             System.out.println("[SERVER-LOG] Client disconnected from server");
             return true;
-        } else
+        }
+        else
         {
             System.out.println("[SERVER-WARNING] Attempted to remove a non-existent client with ID " + clientID);
             return false;
@@ -245,7 +249,8 @@ public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansSe
             if (_connectedClients.isEmpty())
             {
                 foundNumber = true;
-            } else
+            }
+            else
             {
                 for (HashMap.Entry<Integer, ILiveBeansClient> client : _connectedClients.entrySet())
                 {
@@ -257,7 +262,8 @@ public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansSe
                         }
 
                         foundNumber = true;
-                    } catch (RemoteException ex)
+                    }
+                    catch (RemoteException ex)
                     {
                         System.out.println("[SERVER-WARNING] Found a non-responsive client");
                     }
@@ -277,17 +283,19 @@ public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansSe
      * @throws RemoteException
      */
     @Override
-    public void distributeCodeSegments(List<? extends ILiveBeansCodeSegment> codeSegments, int clientID) throws RemoteException
+    public void distributeCodeSegments(List<ILiveBeansCodeSegment> codeSegments, int clientID) throws RemoteException
     {
         System.out.println(String.format("[SERVER-INFO] Received %d code segment(s) from client %d", codeSegments.size(), clientID));
 
-        _connectedClients.entrySet().stream().filter(client -> client.getKey() != clientID).forEach((client)
-                ->
+        //.filter(client -> client.getKey() != clientID)
+        _connectedClients.entrySet().stream().forEach((client)
+                -> 
                 {
                     try
                     {
                         client.getValue().updateLocalCode(codeSegments);
-                    } catch (RemoteException ex)
+                    }
+                    catch (RemoteException ex)
                     {
                         System.out.println("[SERVER-WARNING] Found a non-responsive client");
                     }

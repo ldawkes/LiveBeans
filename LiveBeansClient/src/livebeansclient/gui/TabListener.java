@@ -23,6 +23,7 @@ public class TabListener implements DocumentListener
 {
 
     private static TabListener _instance;
+    private boolean _paused = false;
 
     public static TabListener getInstance() throws RemoteException
     {
@@ -63,6 +64,12 @@ public class TabListener implements DocumentListener
     @Override
     public synchronized void insertUpdate(DocumentEvent e)
     {
+        if (_paused)
+        {
+            System.out.println("Paused on insert");
+            return;
+        }
+
         try
         {
             String code = _currentDocument.getText(e.getOffset(), e.getLength());
@@ -72,14 +79,17 @@ public class TabListener implements DocumentListener
             if (_currentProject == null)
             {
                 _currentClient.addSegmentToBacklog(_currentDocumentName, code, e.getOffset());
-            } else
+            }
+            else
             {
                 _currentClient.addSegmentToBacklog(_currentDocumentName, _currentProjectInformation.getDisplayName(), code, e.getOffset());
             }
-        } catch (BadLocationException ex)
+        }
+        catch (BadLocationException ex)
         {
             System.out.println("[CLIENT-WARNING] Attempted to grab text from invalid point in document");
-        } catch (RemoteException ex)
+        }
+        catch (RemoteException ex)
         {
             System.out.println("[CLIENT-WARNING] Caught RemoteException when adding code to backlog");
         }
@@ -88,6 +98,12 @@ public class TabListener implements DocumentListener
     @Override
     public synchronized void removeUpdate(DocumentEvent e)
     {
+        if (_paused)
+        {
+            System.out.println("Paused on remove");
+            return;
+        }
+        
         System.out.println(String.format("[CLIENT-INFO] Text Removed: (Offset: %s) (Length: %s)", e.getOffset(), e.getLength()));
 
         try
@@ -95,11 +111,13 @@ public class TabListener implements DocumentListener
             if (_currentProject == null)
             {
                 _currentClient.addSegmentToBacklog(_currentDocumentName, e.getOffset(), e.getLength());
-            } else
+            }
+            else
             {
                 _currentClient.addSegmentToBacklog(_currentDocumentName, _currentProjectInformation.getDisplayName(), e.getOffset(), e.getLength());
             }
-        } catch (RemoteException ex)
+        }
+        catch (RemoteException ex)
         {
             System.out.println("[CLIENT-WARNING] Caught RemoteException when adding code to backlog");
         }
@@ -114,6 +132,16 @@ public class TabListener implements DocumentListener
     @Override
     public synchronized void changedUpdate(DocumentEvent e)
     {
+        if (_paused)
+        {
+            return;
+        }
+        
         System.out.println("[CLIENT-INFO] Changed In Document: " + Arrays.toString(e.getDocument().getRootElements()));
+    }
+
+    public void setPaused(boolean _paused)
+    {
+        this._paused = _paused;
     }
 }

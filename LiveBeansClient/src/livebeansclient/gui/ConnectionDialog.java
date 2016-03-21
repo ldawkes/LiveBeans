@@ -111,14 +111,7 @@ public class ConnectionDialog extends javax.swing.JDialog
             JOptionPane.showMessageDialog(this.getParent(), "You must input your Name & a Server IP to connect to");
         } else
         {
-            LiveBeansClient client = null;
-            try
-            {
-                client = (LiveBeansClient) LiveBeansClient.getInstance();
-            } catch (RemoteException ex)
-            {
-                Exceptions.printStackTrace(ex);
-            }
+            LiveBeansClient client = (LiveBeansClient) LiveBeansClient.getInstance();
 
             try
             {
