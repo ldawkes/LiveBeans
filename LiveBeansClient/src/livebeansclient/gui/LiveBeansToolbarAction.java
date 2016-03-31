@@ -37,6 +37,7 @@ public final class LiveBeansToolbarAction implements ActionListener
             _connectionDialog.setLocationRelativeTo(null);
         }
 
+        _connectionDialog.refreshUI();
         _connectionDialog.setVisible(true);
     }
 }

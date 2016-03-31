@@ -16,6 +16,8 @@ import livebeansclient.LiveBeansClient;
 public class ConnectionDialog extends javax.swing.JDialog
 {
 
+    LiveBeansClient _clientInstance;
+
     /**
      * Creates new form ConnectionDialog
      */
@@ -26,6 +28,7 @@ public class ConnectionDialog extends javax.swing.JDialog
 
         txtClientName.setText("");
         txtServerIP.setText("");
+        _clientInstance = (LiveBeansClient) LiveBeansClient.getInstance();
     }
 
     /**
@@ -105,20 +108,24 @@ public class ConnectionDialog extends javax.swing.JDialog
 
     private void btnConnectActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_btnConnectActionPerformed
     {//GEN-HEADEREND:event_btnConnectActionPerformed
-        if (txtServerIP.getText().trim().equals("") || txtClientName.getText().trim().equals(""))
+        if (_clientInstance.isConnected())
         {
-            JOptionPane.showMessageDialog(this.getParent(), "You must input your Name & a Server IP to connect to");
+            _clientInstance.disconnectFromServer();
+            _clientInstance.displayDialog("Disconnected", "Successfully disconnected from server", JOptionPane.INFORMATION_MESSAGE);
+            refreshUI();
+        }
+        else if (txtServerIP.getText().trim().equals("") || txtClientName.getText().trim().equals(""))
+        {
+            _clientInstance.displayDialog("Not Enough Information", "You must provide a name and server IP", JOptionPane.WARNING_MESSAGE);
         }
         else
         {
-            LiveBeansClient client = (LiveBeansClient) LiveBeansClient.getInstance();
-
             try
             {
-                client.setName(txtClientName.getText().trim());
-                client.connectToServer(txtServerIP.getText().trim());
+                _clientInstance.setName(txtClientName.getText().trim());
+                _clientInstance.connectToServer(txtServerIP.getText().trim());
 
-                JOptionPane.showMessageDialog(this.getParent(), "You are now connected");
+                _clientInstance.displayDialog("Connected", "Successfully connected to server", JOptionPane.INFORMATION_MESSAGE);
 
                 this.setVisible(false);
                 this.dispose();
@@ -126,10 +133,20 @@ public class ConnectionDialog extends javax.swing.JDialog
             catch (RemoteException ex)
             {
                 System.out.println("Error Occurred: " + ex.getMessage());
-                JOptionPane.showMessageDialog(this.getParent(), "There was an error connecting to the server");
+                _clientInstance.displayDialog("Failed to connect", "There was an error contacting the server (are you connected to a network?)", JOptionPane.ERROR_MESSAGE);
             }
         }
     }//GEN-LAST:event_btnConnectActionPerformed
+
+    public void refreshUI()
+    {
+        boolean clientConnected = _clientInstance.isConnected();
+        String buttonText = clientConnected ? "Disconnect" : "Connect";
+
+        btnConnect.setText(buttonText);
+        txtClientName.setEnabled(!clientConnected);
+        txtServerIP.setEnabled(!clientConnected);
+    }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnConnect;

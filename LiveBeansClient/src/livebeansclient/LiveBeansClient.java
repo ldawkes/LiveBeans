@@ -232,6 +232,8 @@ public class LiveBeansClient extends UnicastRemoteObject implements Serializable
         {
             _scheduler.shutdown();
         }
+
+        _currentServer = null;
     }
 
     @Override
@@ -250,6 +252,11 @@ public class LiveBeansClient extends UnicastRemoteObject implements Serializable
     public ILiveBeansServer getServer() throws RemoteException
     {
         return _currentServer;
+    }
+
+    public boolean isConnected()
+    {
+        return _currentServer != null;
     }
 
     @Override
