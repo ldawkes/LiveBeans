@@ -244,8 +244,6 @@ public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansSe
             // rather than have some clients given a negative number
             randNumber = randomGenerator.nextInt(Integer.SIZE - 1);
 
-            System.out.println(randNumber);
-
             if (_connectedClients.isEmpty())
             {
                 foundNumber = true;
@@ -279,17 +277,17 @@ public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansSe
      *
      * @param codeSegments The list of code segments that will be sent to the
      * server
-     * @param clientID The author of the code segments
+     * @param authorID The author of the code segments
      * @throws RemoteException
      */
     @Override
-    public void distributeCodeSegments(List<ILiveBeansCodeSegment> codeSegments, int clientID) throws RemoteException
+    public void distributeCodeSegments(List<ILiveBeansCodeSegment> codeSegments, int authorID) throws RemoteException
     {
-        System.out.println(String.format("[SERVER-INFO] Received %d code segment(s) from client %d", codeSegments.size(), clientID));
+        System.out.println(String.format("[SERVER-INFO] Received %d code segment(s) from client %d", codeSegments.size(), authorID));
 
         //.filter(client -> client.getKey() != clientID)
-        _connectedClients.entrySet().stream().forEach((client)
-                -> 
+        _connectedClients.entrySet().stream().filter(client -> client.getKey() != authorID).forEach((client)
+                ->
                 {
                     try
                     {

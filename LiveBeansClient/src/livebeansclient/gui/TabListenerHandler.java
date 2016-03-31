@@ -16,14 +16,12 @@ import java.util.List;
 import javax.swing.text.Document;
 import javax.swing.text.StyledDocument;
 import org.netbeans.api.project.Project;
-import org.netbeans.api.project.ProjectInformation;
 import org.netbeans.api.project.ProjectUtils;
 import org.netbeans.api.project.ui.OpenProjects;
 import org.openide.cookies.EditorCookie;
 import org.openide.filesystems.FileObject;
 import org.openide.loaders.DataObject;
 import org.openide.nodes.Node;
-import org.openide.util.Exceptions;
 import org.openide.windows.Mode;
 import org.openide.windows.TopComponent;
 import org.openide.windows.TopComponent.Registry;
@@ -87,7 +85,7 @@ public class TabListenerHandler implements PropertyChangeListener
 
             for (Node node : tc.getActivatedNodes())
             {
-                System.out.println("    |-> " + node.getLookup().lookup(EditorCookie.class).getOpenedPanes()[0].getDocument());
+                System.out.println("\t|-> " + node.getLookup().lookup(EditorCookie.class).getOpenedPanes()[0].getDocument());
             }
         }
     }
@@ -153,10 +151,16 @@ public class TabListenerHandler implements PropertyChangeListener
                 DataObject documentStream = (DataObject) _currentTabDocument.getProperty(Document.StreamDescriptionProperty);
                 FileObject documentFileObject = documentStream.getPrimaryFile();
 
+                Project tabProject = getTabProject(documentFileObject);
+
                 TabListener listenerInstance = TabListener.getInstance();
                 listenerInstance.setCurrentDocument(_currentTabDocument);
                 listenerInstance.setCurrentDocumentName(_currentTab.getActivatedNodes()[0].getDisplayName());
-                listenerInstance.setCurrentProject(getTabProject(documentFileObject));
+
+                if (tabProject != null)
+                {
+                    listenerInstance.setCurrentProject(getTabProject(documentFileObject));
+                }
 
                 System.out.println("[CLIENT-INFO] Current Tab Document: " + _currentTabDocument);
 
@@ -165,7 +169,7 @@ public class TabListenerHandler implements PropertyChangeListener
         }
         catch (RemoteException | NullPointerException ex)
         {
-            System.out.println(String.format("[CLIENT-WARNING] Caught a %s error:\r\n%s", ex.getClass().getName(), ex.toString()));
+            System.out.println(String.format("[CLIENT-WARNING] Caught a %1$s error:\r\n%2$s", ex.getClass().getName(), ex));
         }
 
     }
@@ -215,12 +219,13 @@ public class TabListenerHandler implements PropertyChangeListener
     public StyledDocument getOpenDocument(String documentName)
     {
         EditorCookie nodeCookie = getEditorCookieForDocument(documentName);
-        
-        if (nodeCookie == null) {
+
+        if (nodeCookie == null)
+        {
             System.out.println("[CLIENT-WARNING] Attempted to retrieve null document");
             return null;
         }
-        
+
         return nodeCookie.getDocument();
     }
 
@@ -242,7 +247,7 @@ public class TabListenerHandler implements PropertyChangeListener
     public void saveDocument(String documentName)
     {
         EditorCookie nodeCookie = getEditorCookieForDocument(documentName);
-        
+
         try
         {
             nodeCookie.saveDocument();

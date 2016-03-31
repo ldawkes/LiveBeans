@@ -14,6 +14,7 @@ import javax.swing.text.Document;
 import livebeansclient.LiveBeansClient;
 import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ProjectInformation;
+import org.netbeans.api.project.ProjectUtils;
 
 /**
  *
@@ -57,8 +58,13 @@ public class TabListener implements DocumentListener
 
     public void setCurrentProject(Project newProject)
     {
+        if (newProject == null)
+        {
+            return;
+        }
+
         _currentProject = newProject;
-        _currentProjectInformation = _currentProject.getLookup().lookup(ProjectInformation.class);
+        _currentProjectInformation = ProjectUtils.getInformation(_currentProject);
     }
 
     @Override
@@ -103,7 +109,7 @@ public class TabListener implements DocumentListener
             System.out.println("Paused on remove");
             return;
         }
-        
+
         System.out.println(String.format("[CLIENT-INFO] Text Removed: (Offset: %s) (Length: %s)", e.getOffset(), e.getLength()));
 
         try
@@ -136,7 +142,7 @@ public class TabListener implements DocumentListener
         {
             return;
         }
-        
+
         System.out.println("[CLIENT-INFO] Changed In Document: " + Arrays.toString(e.getDocument().getRootElements()));
     }
 

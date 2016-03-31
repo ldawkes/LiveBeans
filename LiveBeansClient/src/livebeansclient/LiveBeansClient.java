@@ -275,7 +275,7 @@ public class LiveBeansClient extends UnicastRemoteObject implements Serializable
                     {
                         _tabListener.setPaused(true);
                         document.remove(codeSegment.getDocumentOffset(), codeSegment.getCodeLength());
-                        
+
                         System.out.println("[CLIENT-INFO] Removed code from document");
                     }
                     catch (BadLocationException ex)
@@ -312,9 +312,8 @@ public class LiveBeansClient extends UnicastRemoteObject implements Serializable
             {
                 // Edit local file
             }
-            
-            _tabListenerHandler.saveDocument(codeSegment.getDocumentName());
 
+            _tabListenerHandler.saveDocument(documentName);
             System.out.println(String.format("\t[CLIENT-LOG] Code segment contains: %s", codeSegment.getCodeText()));
         }
     }
@@ -329,19 +328,23 @@ public class LiveBeansClient extends UnicastRemoteObject implements Serializable
 
         System.out.println("[CLIENT-INFO] Synchronising...");
 
-        try
+        synchronized (_segmentBacklog)
         {
-            _currentServer.distributeCodeSegments(_segmentBacklog, _clientID);
+            try
+            {
+                _currentServer.distributeCodeSegments(_segmentBacklog, _clientID);
 
-            System.out.println(String.format("[CLIENT-INFO] Synchronised %d code segment(s)", _segmentBacklog.size()));
+                System.out.println(String.format("[CLIENT-INFO] Synchronised %d code segment(s)", _segmentBacklog.size()));
 
-            _segmentBacklog.clear();
+                _segmentBacklog.clear();
 
+            }
+            catch (RemoteException ex)
+            {
+                System.out.println("[CLIENT-WARNING] There was an error synchronising the code segments\r\n" + ex);
+            }
         }
-        catch (RemoteException ex)
-        {
-            System.out.println("[CLIENT-WARNING] There was an error synchronising the code segments\r\n" + ex);
-        }
+
     }
 
     public void displayDialog(String title, String message, int messageType)

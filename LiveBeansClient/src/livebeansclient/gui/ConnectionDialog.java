@@ -8,7 +8,6 @@ package livebeansclient.gui;
 import java.rmi.RemoteException;
 import javax.swing.JOptionPane;
 import livebeansclient.LiveBeansClient;
-import org.openide.util.Exceptions;
 
 /**
  *
@@ -109,7 +108,8 @@ public class ConnectionDialog extends javax.swing.JDialog
         if (txtServerIP.getText().trim().equals("") || txtClientName.getText().trim().equals(""))
         {
             JOptionPane.showMessageDialog(this.getParent(), "You must input your Name & a Server IP to connect to");
-        } else
+        }
+        else
         {
             LiveBeansClient client = (LiveBeansClient) LiveBeansClient.getInstance();
 
@@ -119,7 +119,11 @@ public class ConnectionDialog extends javax.swing.JDialog
                 client.connectToServer(txtServerIP.getText().trim());
 
                 JOptionPane.showMessageDialog(this.getParent(), "You are now connected");
-            } catch (RemoteException ex)
+
+                this.setVisible(false);
+                this.dispose();
+            }
+            catch (RemoteException ex)
             {
                 System.out.println("Error Occurred: " + ex.getMessage());
                 JOptionPane.showMessageDialog(this.getParent(), "There was an error connecting to the server");
