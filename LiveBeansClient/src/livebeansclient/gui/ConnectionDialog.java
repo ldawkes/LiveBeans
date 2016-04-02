@@ -5,9 +5,12 @@
  */
 package livebeansclient.gui;
 
-import java.rmi.RemoteException;
+import java.awt.Color;
+import java.awt.Frame;
+import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import livebeansclient.LiveBeansClient;
+import livebeansclient.swingworkers.ConnectWorker;
 
 /**
  *
@@ -16,12 +19,23 @@ import livebeansclient.LiveBeansClient;
 public class ConnectionDialog extends javax.swing.JDialog
 {
 
-    LiveBeansClient _clientInstance;
+    private final LiveBeansClient _clientInstance;
+    private static ConnectionDialog _instance;
+
+    public static ConnectionDialog getInstance()
+    {
+        if (_instance == null)
+        {
+            _instance = new ConnectionDialog(new JFrame(), true);
+        }
+
+        return _instance;
+    }
 
     /**
      * Creates new form ConnectionDialog
      */
-    public ConnectionDialog(java.awt.Frame parent, boolean modal)
+    private ConnectionDialog(Frame parent, boolean modal)
     {
         super(parent, modal);
         initComponents();
@@ -46,9 +60,14 @@ public class ConnectionDialog extends javax.swing.JDialog
         lblServerIP = new javax.swing.JLabel();
         txtClientName = new javax.swing.JTextField();
         txtServerIP = new javax.swing.JFormattedTextField();
+        lblClientInfo = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle(org.openide.util.NbBundle.getMessage(ConnectionDialog.class, "ConnectionDialog.title")); // NOI18N
+        setModalityType(java.awt.Dialog.ModalityType.APPLICATION_MODAL);
+        setPreferredSize(new java.awt.Dimension(260, 130));
+        setResizable(false);
+        setSize(new java.awt.Dimension(260, 130));
 
         btnConnect.setFont(new java.awt.Font("Tahoma", 1, 14)); // NOI18N
         org.openide.awt.Mnemonics.setLocalizedText(btnConnect, org.openide.util.NbBundle.getMessage(ConnectionDialog.class, "ConnectionDialog.btnConnect.text")); // NOI18N
@@ -69,6 +88,9 @@ public class ConnectionDialog extends javax.swing.JDialog
 
         txtServerIP.setText(org.openide.util.NbBundle.getMessage(ConnectionDialog.class, "ConnectionDialog.txtServerIP.text")); // NOI18N
 
+        lblClientInfo.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
+        org.openide.awt.Mnemonics.setLocalizedText(lblClientInfo, org.openide.util.NbBundle.getMessage(ConnectionDialog.class, "ConnectionDialog.lblClientInfo.text")); // NOI18N
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -76,7 +98,7 @@ public class ConnectionDialog extends javax.swing.JDialog
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(btnConnect, javax.swing.GroupLayout.DEFAULT_SIZE, 193, Short.MAX_VALUE)
+                    .addComponent(btnConnect, javax.swing.GroupLayout.DEFAULT_SIZE, 242, Short.MAX_VALUE)
                     .addGroup(layout.createSequentialGroup()
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                             .addComponent(lblClientName)
@@ -84,7 +106,10 @@ public class ConnectionDialog extends javax.swing.JDialog
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(txtClientName)
-                            .addComponent(txtServerIP))))
+                            .addComponent(txtServerIP)))
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                        .addGap(0, 0, Short.MAX_VALUE)
+                        .addComponent(lblClientInfo)))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
@@ -100,7 +125,9 @@ public class ConnectionDialog extends javax.swing.JDialog
                     .addComponent(txtServerIP, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(btnConnect)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(lblClientInfo)
+                .addContainerGap())
         );
 
         pack();
@@ -116,25 +143,15 @@ public class ConnectionDialog extends javax.swing.JDialog
         }
         else if (txtServerIP.getText().trim().equals("") || txtClientName.getText().trim().equals(""))
         {
-            _clientInstance.displayDialog("Not Enough Information", "You must provide a name and server IP", JOptionPane.WARNING_MESSAGE);
+            _clientInstance.displayDialog("Not Enough Information", "You must provide a Name and the Server IP", JOptionPane.WARNING_MESSAGE);
         }
         else
         {
-            try
-            {
-                _clientInstance.setName(txtClientName.getText().trim());
-                _clientInstance.connectToServer(txtServerIP.getText().trim());
+            setInfo("Connecting...", Color.YELLOW);
+            setClickables(false);
 
-                _clientInstance.displayDialog("Connected", "Successfully connected to server", JOptionPane.INFORMATION_MESSAGE);
-
-                this.setVisible(false);
-                this.dispose();
-            }
-            catch (RemoteException ex)
-            {
-                System.out.println("Error Occurred: " + ex.getMessage());
-                _clientInstance.displayDialog("Failed to connect", "There was an error contacting the server (are you connected to a network?)", JOptionPane.ERROR_MESSAGE);
-            }
+            ConnectWorker connectWorker = new ConnectWorker(txtClientName.getText(), txtServerIP.getText());
+            connectWorker.execute();
         }
     }//GEN-LAST:event_btnConnectActionPerformed
 
@@ -148,8 +165,22 @@ public class ConnectionDialog extends javax.swing.JDialog
         txtServerIP.setEnabled(!clientConnected);
     }
 
+    public void setInfo(String newInfo, Color newColour)
+    {
+        lblClientInfo.setForeground(newColour);
+        lblClientInfo.setText(newInfo);
+    }
+
+    public void setClickables(boolean enabled)
+    {
+        txtClientName.setEnabled(enabled);
+        txtServerIP.setEnabled(enabled);
+        btnConnect.setEnabled(enabled);
+    }
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnConnect;
+    private javax.swing.JLabel lblClientInfo;
     private javax.swing.JLabel lblClientName;
     private javax.swing.JLabel lblServerIP;
     private javax.swing.JTextField txtClientName;

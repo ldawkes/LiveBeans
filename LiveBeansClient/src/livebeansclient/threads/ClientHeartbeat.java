@@ -13,24 +13,30 @@ import livebeansclient.LiveBeansClient;
  *
  * @author Luke Dawkes
  */
-public class ClientHeartbeat implements Runnable {
+public class ClientHeartbeat implements Runnable
+{
 
     private int _errors = 0;
     private final int _maxErrors = 2;
 
     @Override
-    public void run() {
+    public void run()
+    {
 
         LiveBeansClient clientInstance = (LiveBeansClient) LiveBeansClient.getInstance();
-        try {
+        try
+        {
 
             clientInstance.getServer().sendHeartbeat(clientInstance.getID());
 
             _errors = 0;
-        } catch (RemoteException ex) {
+        }
+        catch (RemoteException ex)
+        {
             System.out.println("[CLIENT-WARNING] Failed to update server heartbeat");
 
-            if (++_errors >= _maxErrors) {
+            if (++_errors >= _maxErrors)
+            {
                 clientInstance.disconnectFromServer();
                 clientInstance.displayDialog("Lost Connection", "Connection to server has been lost, your code is no longer being synchronised", JOptionPane.ERROR_MESSAGE);
             }

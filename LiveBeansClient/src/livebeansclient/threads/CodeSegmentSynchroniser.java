@@ -21,7 +21,8 @@ public class CodeSegmentSynchroniser implements Runnable
         try
         {
             LiveBeansClient.getInstance().updateRemoteCode();
-        } catch (RemoteException ex)
+        }
+        catch (RemoteException ex)
         {
             System.out.println("[CLIENT-WARNING] Failed to call updateRemoteCode\r\n" + ex);
         }

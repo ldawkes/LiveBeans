@@ -190,6 +190,11 @@ public class LiveBeansClient extends UnicastRemoteObject implements Serializable
         {
             System.out.println(String.format("[CLIENT-INFO] IP Address (%s) matches regex pattern", serverAddress));
         }
+        else
+        {
+            displayDialog("Incorrect IP Format", "You must enter a valid IP (e.g. 192.168.0.1)", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
 
         try
         {
@@ -213,7 +218,10 @@ public class LiveBeansClient extends UnicastRemoteObject implements Serializable
         }
 
         System.out.println(String.format("[CLIENT-INFO] Current server is %s", _currentServer == null ? "null" : "not null"));
+    }
 
+    public void postConnect()
+    {
         _tabListenerHandler.setUpListeners();
     }
 
@@ -231,9 +239,8 @@ public class LiveBeansClient extends UnicastRemoteObject implements Serializable
         finally
         {
             _scheduler.shutdown();
+            _currentServer = null;
         }
-
-        _currentServer = null;
     }
 
     @Override

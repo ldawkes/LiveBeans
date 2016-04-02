@@ -7,7 +7,6 @@ package livebeansclient.gui;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import javax.swing.JFrame;
 import org.openide.awt.ActionID;
 import org.openide.awt.ActionReference;
 import org.openide.awt.ActionRegistration;
@@ -31,11 +30,7 @@ public final class LiveBeansToolbarAction implements ActionListener
     @Override
     public void actionPerformed(ActionEvent e)
     {
-        if (_connectionDialog == null)
-        {
-            _connectionDialog = new ConnectionDialog(new JFrame(), true);
-            _connectionDialog.setLocationRelativeTo(null);
-        }
+        _connectionDialog = ConnectionDialog.getInstance();
 
         _connectionDialog.refreshUI();
         _connectionDialog.setVisible(true);

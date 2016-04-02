@@ -48,7 +48,8 @@ class ClientChecker implements Runnable
                     LiveBeansServer.getInstance().unRegisterClient(heartbeat.getKey());
                 }
             }
-        } catch (RemoteException ex)
+        }
+        catch (RemoteException ex)
         {
             System.out.println("[SERVER-ERROR] There was a problem updating the client list:\r\n\r\n" + ex.toString());
         }
