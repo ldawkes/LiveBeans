@@ -1,19 +1,37 @@
 /*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
+ * The MIT License
+ *
+ * Copyright 2016 Luke Dawkes.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
  */
 package livebeansserver;
 
 import java.net.InetAddress;
-import java.net.MalformedURLException;
 import java.net.UnknownHostException;
-import java.rmi.Naming;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
+import java.security.AccessControlException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
@@ -23,6 +41,8 @@ import java.util.concurrent.TimeUnit;
 import livebeanscommon.ILiveBeansClient;
 import livebeanscommon.ILiveBeansCodeSegment;
 import livebeanscommon.ILiveBeansServer;
+import livebeanscommon.IServerWatcher;
+import livebeansserver.util.ServerConstants.ServerStatus;
 
 /**
  *
@@ -34,67 +54,101 @@ public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansSe
     private static LiveBeansServer _instance;
 
     /**
+     * Gets the singleton instance of the server
      *
-     * @return @throws RemoteException
+     * @return LiveBeansServer
      */
-    public static LiveBeansServer getInstance() throws RemoteException
+    public static LiveBeansServer getInstance()
     {
         if (_instance == null)
         {
-            _instance = new LiveBeansServer();
+            try
+            {
+                _instance = new LiveBeansServer();
+            }
+            catch (RemoteException ex)
+            {
+                System.out.println("[SERVER-ERROR] Failed to create server instance.\r\nError: " + ex.getMessage());
+            }
         }
 
         return _instance;
     }
 
-    /**
-     * @param args The command line arguments
-     * @throws java.rmi.RemoteException
-     * @throws java.net.MalformedURLException
-     * @throws java.net.UnknownHostException
-     */
-    public static void main(String[] args) throws RemoteException, MalformedURLException, UnknownHostException
-    {
-        try
-        {
-            if (System.getSecurityManager() == null)
-            {
-                System.setProperty("java.security.policy", "src/livebeansserver/security/server.policy");
-                System.setSecurityManager(new SecurityManager());
-            }
-
-            InetAddress localHost = InetAddress.getLocalHost();
-            String ipAddress = localHost.getHostAddress();
-            System.out.println(String.format("[SERVER-SETUP] Using LocalHost: %s\r\n[SERVER-SETUP] Using Host Address (%s)", localHost.toString(), ipAddress));
-
-            Registry registry = LocateRegistry.createRegistry(1099);
-
-            Naming.rebind("LiveBeansServer", getInstance());
-            System.out.println("[SERVER-SETUP] LiveBeansServer bound to host address");
-        }
-        catch (RemoteException ex)
-        {
-            System.out.println("[SERVER-ERROR] There was a problem setting up the server.\r\nError: " + ex.getMessage());
-        }
-    }
-
+    private final ArrayList<IServerWatcher> _watchers;
     private final HashMap<Integer, ILiveBeansClient> _connectedClients;
     private final HashMap<Integer, Long> _clientHeartbeats;
     private final ScheduledExecutorService _scheduler;
 
+    private ServerStatus _currentStatus;
+
     private LiveBeansServer() throws RemoteException
     {
+        _watchers = new ArrayList<>();
+
         _connectedClients = new HashMap<>();
         _clientHeartbeats = new HashMap<>();
 
         _scheduler = Executors.newScheduledThreadPool(1);
-        _scheduler.scheduleAtFixedRate(ClientChecker.getInstance(), 1, 5, TimeUnit.SECONDS);
+    }
 
-        if (System.getSecurityManager() == null)
+    public void serverInit(Integer port)
+    {
+        try
         {
-            System.setProperty("java.security.policy", "security/server.policy");
-            System.setSecurityManager(new SecurityManager());
+
+            InetAddress localHost = InetAddress.getLocalHost();
+            String ipAddress = localHost.getHostAddress();
+
+            System.out.println(String.format("[SERVER-SETUP] Using LocalHost: %s\r\n[SERVER-SETUP] Using Host Address (%s)", localHost.toString(), ipAddress));
+
+            Registry registry = LocateRegistry.createRegistry(port);
+
+            registry.rebind("LiveBeansServer", getInstance());
+            System.out.println("[SERVER-SETUP] LiveBeansServer bound to host address");
+            _scheduler.scheduleAtFixedRate(ClientChecker.getInstance(), 1, 5, TimeUnit.SECONDS);
+
+            _currentStatus = ServerStatus.ONLINE;
+            notifyWatchers();
+
         }
+        catch (RemoteException ex)
+        {
+            System.out.println("[SERVER-ERROR] There was a problem setting up the server.\r\n\tError: " + ex.getMessage());
+            notifyError();
+        }
+        catch (UnknownHostException ex)
+        {
+            System.out.println("[SERVER-ERROR] There was a problem locating your localhost address.\r\n\tError: " + ex.getMessage());
+            notifyError();
+        }
+        catch (AccessControlException ex)
+        {
+            System.out.println("[SERVER-ERROR] The server does not have required access.\r\n\tError: " + ex.getMessage());
+        }
+    }
+
+    public void addWatcher(IServerWatcher newWatcher)
+    {
+        if (!_watchers.contains(newWatcher))
+        {
+            _watchers.add(newWatcher);
+        }
+    }
+
+    private void notifyWatchers()
+    {
+        _watchers.stream().forEach((watcher)
+                ->
+                {
+                    watcher.onServerStatusChange();
+        });
+    }
+
+    private void notifyError()
+    {
+        _currentStatus = ServerStatus.ERROR;
+        notifyWatchers();
     }
 
     /**
@@ -298,5 +352,10 @@ public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansSe
                         System.out.println("[SERVER-WARNING] Found a non-responsive client");
                     }
         });
+    }
+
+    public ServerStatus getCurrentStatus()
+    {
+        return _currentStatus;
     }
 }

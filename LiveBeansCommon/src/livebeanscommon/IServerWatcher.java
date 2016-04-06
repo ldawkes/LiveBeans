@@ -23,32 +23,12 @@
  */
 package livebeanscommon;
 
-import java.rmi.Remote;
-import java.rmi.RemoteException;
-import java.util.List;
-
 /**
  *
  * @author Luke Dawkes
  */
-public interface ILiveBeansClient extends Remote
+public interface IServerWatcher
 {
 
-    void setID(int newID) throws RemoteException;
-
-    void setName(String newName) throws RemoteException;
-
-    void connectToServer(String ipAddress) throws RemoteException;
-
-    void disconnectFromServer() throws RemoteException;
-
-    void updateLocalCode(List<ILiveBeansCodeSegment> newCodeSegment) throws RemoteException;
-
-    void updateRemoteCode() throws RemoteException;
-
-    int getID() throws RemoteException;
-
-    String getName() throws RemoteException;
-
-    ILiveBeansServer getServer() throws RemoteException;
+    void onServerStatusChange();
 }

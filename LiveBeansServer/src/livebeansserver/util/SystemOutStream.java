@@ -21,34 +21,60 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package livebeanscommon;
+package livebeansserver.util;
 
-import java.rmi.Remote;
-import java.rmi.RemoteException;
-import java.util.List;
+import java.io.FilterOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import livebeanscommon.ISysOutWatcher;
 
 /**
  *
  * @author Luke Dawkes
+ *
  */
-public interface ILiveBeansClient extends Remote
+public class SystemOutStream extends FilterOutputStream
 {
 
-    void setID(int newID) throws RemoteException;
+    private final ArrayList<ISysOutWatcher> _watchers;
 
-    void setName(String newName) throws RemoteException;
+    public SystemOutStream(OutputStream out)
+    {
+        super(out);
 
-    void connectToServer(String ipAddress) throws RemoteException;
+        _watchers = new ArrayList<>();
+    }
 
-    void disconnectFromServer() throws RemoteException;
+    public void addWatcher(ISysOutWatcher newWatcher)
+    {
+        _watchers.add(newWatcher);
+    }
 
-    void updateLocalCode(List<ILiveBeansCodeSegment> newCodeSegment) throws RemoteException;
+    @Override
+    public void write(byte b[]) throws IOException
+    {
+        updateWatchers(new String(b));
+    }
 
-    void updateRemoteCode() throws RemoteException;
+    @Override
+    public void write(byte b[], int off, int len) throws IOException
+    {
+        updateWatchers(new String(b, off, len));
+    }
 
-    int getID() throws RemoteException;
+    private void updateWatchers(String updatedString)
+    {
+        if (_watchers.isEmpty())
+        {
+            return;
+        }
 
-    String getName() throws RemoteException;
+        _watchers.stream().forEach((watcher)
+                ->
+                {
+                    watcher.onPrintLine(updatedString);
+        });
+    }
 
-    ILiveBeansServer getServer() throws RemoteException;
 }

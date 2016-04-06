@@ -21,34 +21,34 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package livebeanscommon;
-
-import java.rmi.Remote;
-import java.rmi.RemoteException;
-import java.util.List;
+package livebeansserver.util;
 
 /**
  *
  * @author Luke Dawkes
  */
-public interface ILiveBeansClient extends Remote
+public class ServerConstants
 {
 
-    void setID(int newID) throws RemoteException;
+    public enum ServerStatus
+    {
+        ONLINE,
+        OFFLINE,
+        ERROR
+    }
 
-    void setName(String newName) throws RemoteException;
+    public enum OutputView
+    {
+        EVERYTHING,
+        INFORMATION,
+        WARNINGS,
+        ERRORS
+    }
 
-    void connectToServer(String ipAddress) throws RemoteException;
-
-    void disconnectFromServer() throws RemoteException;
-
-    void updateLocalCode(List<ILiveBeansCodeSegment> newCodeSegment) throws RemoteException;
-
-    void updateRemoteCode() throws RemoteException;
-
-    int getID() throws RemoteException;
-
-    String getName() throws RemoteException;
-
-    ILiveBeansServer getServer() throws RemoteException;
+    public enum LogType
+    {
+        INFORMATION,
+        WARNING,
+        ERROR
+    }
 }
