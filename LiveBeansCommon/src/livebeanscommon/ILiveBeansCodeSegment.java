@@ -45,7 +45,7 @@ public interface ILiveBeansCodeSegment extends Remote, Serializable
 
     void setDocumentName(String documentName) throws RemoteException;
 
-    void setProject(String projectName) throws RemoteException;
+    void setProjectName(String projectName) throws RemoteException;
 
     int getDocumentOffset() throws RemoteException;
 

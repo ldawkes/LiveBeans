@@ -60,7 +60,7 @@ public class ConnectionDialog extends javax.swing.JDialog
 
         txtClientName.setText("");
         txtServerIP.setText("");
-        _clientInstance = (LiveBeansClient) LiveBeansClient.getInstance();
+        _clientInstance = LiveBeansClient.getInstance();
     }
 
     /**

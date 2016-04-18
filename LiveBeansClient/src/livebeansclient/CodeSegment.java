@@ -105,7 +105,7 @@ public class CodeSegment extends UnicastRemoteObject implements ILiveBeansCodeSe
     }
 
     @Override
-    public void setProject(String newProjectName) throws RemoteException
+    public void setProjectName(String newProjectName) throws RemoteException
     {
         _projectName = newProjectName;
     }

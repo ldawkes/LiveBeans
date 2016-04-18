@@ -34,12 +34,12 @@ import livebeanscommon.ISysOutWatcher;
  * @author Luke Dawkes
  *
  */
-public class SystemOutStream extends FilterOutputStream
+public class SystemOutputStream extends FilterOutputStream
 {
 
     private final ArrayList<ISysOutWatcher> _watchers;
 
-    public SystemOutStream(OutputStream out)
+    public SystemOutputStream(OutputStream out)
     {
         super(out);
 

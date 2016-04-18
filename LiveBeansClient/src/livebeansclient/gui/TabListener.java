@@ -61,7 +61,7 @@ public class TabListener implements DocumentListener
 
     private TabListener() throws RemoteException
     {
-        _currentClient = (LiveBeansClient) LiveBeansClient.getInstance();
+        _currentClient = LiveBeansClient.getInstance();
     }
 
     public void setCurrentDocument(Document newDocument)

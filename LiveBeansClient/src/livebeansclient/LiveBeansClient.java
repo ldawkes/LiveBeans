@@ -33,7 +33,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -59,7 +58,7 @@ public class LiveBeansClient extends UnicastRemoteObject implements Serializable
 
     private static LiveBeansClient _instance;
 
-    public static ILiveBeansClient getInstance()
+    public static LiveBeansClient getInstance()
     {
         if (_instance == null)
         {
@@ -85,7 +84,6 @@ public class LiveBeansClient extends UnicastRemoteObject implements Serializable
     private TabListener _tabListener;
 
     private final ScheduledExecutorService _scheduler;
-    private ScheduledFuture _heartbeatSchedule, _codeSynchroniseSchedule;
 
     private final List<ILiveBeansCodeSegment> _segmentBacklog;
 
@@ -108,12 +106,15 @@ public class LiveBeansClient extends UnicastRemoteObject implements Serializable
      * @param codeOffset The offset of the updated code within the document
      * @throws RemoteException
      */
-    public void addSegmentToBacklog(String documentName, String projectName, String code, int codeOffset) throws RemoteException
+    public void addSegmentToBacklog(String documentName,
+                                    String projectName,
+                                    String code,
+                                    int codeOffset) throws RemoteException
     {
         CodeSegment codeSegment = new CodeSegment();
         codeSegment.setAuthorID(_clientID);
         codeSegment.setDocumentName(documentName);
-        codeSegment.setProject(projectName);
+        codeSegment.setProjectName(projectName);
         codeSegment.setCodeText(code);
         codeSegment.setDocumentOffset(codeOffset);
 
@@ -134,7 +135,7 @@ public class LiveBeansClient extends UnicastRemoteObject implements Serializable
         CodeSegment codeSegment = new CodeSegment();
         codeSegment.setAuthorID(_clientID);
         codeSegment.setDocumentName(documentName);
-        codeSegment.setProject(projectName);
+        codeSegment.setProjectName(projectName);
         codeSegment.setDocumentOffset(codeOffset);
         codeSegment.setCodeLength(codeLength);
 
@@ -213,8 +214,8 @@ public class LiveBeansClient extends UnicastRemoteObject implements Serializable
             _currentServer = (ILiveBeansServer) reg.lookup("LiveBeansServer");
             _currentServer.registerClient(this);
 
-            _heartbeatSchedule = _scheduler.scheduleAtFixedRate(new ClientHeartbeat(), 2, 2, TimeUnit.SECONDS);
-            _codeSynchroniseSchedule = _scheduler.scheduleAtFixedRate(new CodeSegmentSynchroniser(), 1, 1, TimeUnit.SECONDS);
+            _scheduler.scheduleAtFixedRate(new ClientHeartbeat(), 2, 2, TimeUnit.SECONDS);
+            _scheduler.scheduleAtFixedRate(new CodeSegmentSynchroniser(), 1, 1, TimeUnit.SECONDS);
 
             _tabListenerHandler = TabListenerHandler.getInstance();
             _tabListener = TabListener.getInstance();
@@ -298,7 +299,8 @@ public class LiveBeansClient extends UnicastRemoteObject implements Serializable
                     try
                     {
                         _tabListener.setPaused(true);
-                        document.remove(codeSegment.getDocumentOffset(), codeSegment.getCodeLength());
+                        document.remove(codeSegment.getDocumentOffset(),
+                                        codeSegment.getCodeLength());
 
                         System.out.println("[CLIENT-INFO] Removed code from document");
                     }
@@ -319,7 +321,10 @@ public class LiveBeansClient extends UnicastRemoteObject implements Serializable
                     try
                     {
                         _tabListener.setPaused(true);
-                        document.insertString(codeSegment.getDocumentOffset(), code, document.getLogicalStyle(codeSegment.getDocumentOffset()));
+                        Integer offset = codeSegment.getDocumentOffset();
+                        document.insertString(offset,
+                                              code,
+                                              document.getLogicalStyle(offset));
                         System.out.println("[CLIENT-INFO] Added code to document");
                     }
                     catch (BadLocationException ex)

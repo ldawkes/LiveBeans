@@ -23,7 +23,6 @@
  */
 package livebeansclient.threads;
 
-import java.rmi.RemoteException;
 import livebeansclient.LiveBeansClient;
 
 /**
@@ -36,14 +35,7 @@ public class CodeSegmentSynchroniser implements Runnable
     @Override
     public void run()
     {
-        try
-        {
-            LiveBeansClient.getInstance().updateRemoteCode();
-        }
-        catch (RemoteException ex)
-        {
-            System.out.println("[CLIENT-WARNING] Failed to call updateRemoteCode\r\n" + ex);
-        }
+        LiveBeansClient.getInstance().updateRemoteCode();
     }
 
 }

@@ -40,6 +40,7 @@ import org.openide.cookies.EditorCookie;
 import org.openide.filesystems.FileObject;
 import org.openide.loaders.DataObject;
 import org.openide.nodes.Node;
+import org.openide.util.Lookup;
 import org.openide.windows.Mode;
 import org.openide.windows.TopComponent;
 import org.openide.windows.TopComponent.Registry;
@@ -69,14 +70,13 @@ public class TabListenerHandler implements PropertyChangeListener
         return _instance;
     }
 
+    private Registry _topComponentRegistry;
     private TopComponent _currentTab;
     private StyledDocument _currentTabDocument;
     private final ArrayList<StyledDocument> _openedDocuments;
-    private final WindowManager _defaultWindowManager;
 
     private TabListenerHandler()
     {
-        _defaultWindowManager = WindowManager.getDefault();
         _openedDocuments = new ArrayList<>();
     }
 
@@ -85,10 +85,10 @@ public class TabListenerHandler implements PropertyChangeListener
      */
     public void setUpListeners()
     {
-        Registry reg = TopComponent.getRegistry();
-        reg.addPropertyChangeListener(this);
+        _topComponentRegistry = TopComponent.getRegistry();
+        _topComponentRegistry.addPropertyChangeListener(this);
 
-        _currentTab = reg.getActivated();
+        _currentTab = _topComponentRegistry.getActivated();
 
         for (TopComponent tc : getCurrentOpenedEditors())
         {
@@ -133,7 +133,7 @@ public class TabListenerHandler implements PropertyChangeListener
     @Override
     public void propertyChange(PropertyChangeEvent evt)
     {
-        TopComponent activeComponent = TopComponent.getRegistry().getActivated();
+        TopComponent activeComponent = _topComponentRegistry.getActivated();
 
         if (activeComponent == _currentTab)
         {
@@ -162,7 +162,9 @@ public class TabListenerHandler implements PropertyChangeListener
             }
             else
             {
-                _currentTabDocument = activeNode.getLookup().lookup(EditorCookie.class).getDocument();
+                Lookup nodeLookup = activeNode.getLookup();
+                EditorCookie nodeCookie = nodeLookup.lookup(EditorCookie.class);
+                _currentTabDocument = nodeCookie.getDocument();
                 _openedDocuments.add(_currentTabDocument);
                 System.out.println("[CLIENT-INFO] New Tab Name: " + _currentTab.getActivatedNodes()[0].getDisplayName());
 

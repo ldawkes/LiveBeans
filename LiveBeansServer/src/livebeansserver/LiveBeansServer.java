@@ -23,12 +23,15 @@
  */
 package livebeansserver;
 
+import java.io.Serializable;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.rmi.NotBoundException;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.rmi.server.ExportException;
 import java.rmi.server.UnicastRemoteObject;
 import java.security.AccessControlException;
 import java.util.ArrayList;
@@ -48,7 +51,7 @@ import livebeansserver.util.ServerConstants.ServerStatus;
  *
  * @author Luke Dawkes
  */
-public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansServer, Remote
+public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansServer, Remote, Serializable
 {
 
     private static LiveBeansServer _instance;
@@ -75,10 +78,12 @@ public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansSe
         return _instance;
     }
 
-    private final ArrayList<IServerWatcher> _watchers;
+    private transient final ArrayList<IServerWatcher> _watchers;
     private final HashMap<Integer, ILiveBeansClient> _connectedClients;
     private final HashMap<Integer, Long> _clientHeartbeats;
-    private final ScheduledExecutorService _scheduler;
+    private transient final ScheduledExecutorService _scheduler;
+
+    private Registry _serverRegistry;
 
     private ServerStatus _currentStatus;
 
@@ -94,17 +99,27 @@ public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansSe
 
     public void serverInit(Integer port)
     {
+        if (_serverRegistry != null)
+        {
+            System.out.println("[SERVER-WARNING] Server is already online.");
+            return;
+        }
+
         try
         {
-
             InetAddress localHost = InetAddress.getLocalHost();
             String ipAddress = localHost.getHostAddress();
 
             System.out.println(String.format("[SERVER-SETUP] Using LocalHost: %s\r\n[SERVER-SETUP] Using Host Address (%s)", localHost.toString(), ipAddress));
 
-            Registry registry = LocateRegistry.createRegistry(port);
+            _serverRegistry = getRegistry(port);
 
-            registry.rebind("LiveBeansServer", getInstance());
+            if (_serverRegistry == null)
+            {
+                _serverRegistry = LocateRegistry.createRegistry(port);
+            }
+
+            _serverRegistry.rebind("LiveBeansServer", getInstance());
             System.out.println("[SERVER-SETUP] LiveBeansServer bound to host address");
             _scheduler.scheduleAtFixedRate(ClientChecker.getInstance(), 1, 5, TimeUnit.SECONDS);
 
@@ -115,6 +130,7 @@ public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansSe
         catch (RemoteException ex)
         {
             System.out.println("[SERVER-ERROR] There was a problem setting up the server.\r\n\tError: " + ex.getMessage());
+            ex.printStackTrace();
             notifyError();
         }
         catch (UnknownHostException ex)
@@ -128,6 +144,27 @@ public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansSe
         }
     }
 
+    public void closeServer()
+    {
+        try
+        {
+            _connectedClients.clear();
+            _clientHeartbeats.clear();
+
+            _serverRegistry.unbind("LiveBeansServer");
+            _serverRegistry = null;
+
+            _currentStatus = ServerStatus.OFFLINE;
+            notifyWatchers();
+
+            System.out.println("[SERVER-LOG] Server closed.");
+        }
+        catch (RemoteException | NotBoundException ex)
+        {
+            System.out.println("[SERVER-ERROR] Failed to close down server.\r\n\tError: " + ex);
+        }
+    }
+
     public void addWatcher(IServerWatcher newWatcher)
     {
         if (!_watchers.contains(newWatcher))
@@ -138,6 +175,11 @@ public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansSe
 
     private void notifyWatchers()
     {
+        if (_watchers.isEmpty())
+        {
+            return;
+        }
+
         _watchers.stream().forEach((watcher)
                 ->
                 {
@@ -162,6 +204,11 @@ public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansSe
         return _clientHeartbeats;
     }
 
+    public HashMap<Integer, ILiveBeansClient> getConectedClients()
+    {
+        return _connectedClients;
+    }
+
     /**
      * Registers the given client on the server
      *
@@ -179,7 +226,10 @@ public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansSe
             client.setID(newClientID);
             _connectedClients.put(newClientID, client);
 
-            System.out.println(String.format("[SERVER-LOG] Client %s(%d) connected to server", client.getName(), client.getID()));
+            System.out.println(String.format("[SERVER-LOG] Client %s(%d)#"
+                                             + " connected to server",
+                                             client.getName(),
+                                             client.getID()));
             return true;
         }
         else
@@ -280,7 +330,7 @@ public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansSe
             }
         }
 
-        System.out.println(String.format("[SERVER-WARNING] Attempted to get a client by invalid ID(%s)", clientID));
+        System.out.println(String.format("[SERVER-WARNING] Attempted to get a client by invalid ID (%s)", clientID));
 
         return null;
     }
@@ -340,18 +390,47 @@ public class LiveBeansServer extends UnicastRemoteObject implements ILiveBeansSe
         System.out.println(String.format("[SERVER-INFO] Received %d code segment(s) from client %d", codeSegments.size(), authorID));
 
         //.filter(client -> client.getKey() != clientID)
-        _connectedClients.entrySet().stream().filter(client -> client.getKey() != authorID).forEach((client)
-                ->
-                {
-                    try
-                    {
-                        client.getValue().updateLocalCode(codeSegments);
-                    }
-                    catch (RemoteException ex)
-                    {
-                        System.out.println("[SERVER-WARNING] Found a non-responsive client");
-                    }
-        });
+        _connectedClients.entrySet()
+                .stream()
+                .filter(client -> client.getKey() != authorID)
+                .forEach((client)
+                        ->
+                        {
+                            try
+                            {
+                                client.getValue().updateLocalCode(codeSegments);
+                            }
+                            catch (RemoteException ex)
+                            {
+                                System.out.println("[SERVER-WARNING] Found a "
+                                                   + "non-responsive client");
+                            }
+                });
+    }
+
+    private Registry getRegistry(Integer port)
+    {
+        try
+        {
+            return LocateRegistry.createRegistry(port);
+        }
+        catch (ExportException ex)
+        {
+            try
+            {
+                return LocateRegistry.getRegistry(port);
+            }
+            catch (RemoteException ex1)
+            {
+                System.out.println("[SERVER-ERROR] There was a problem retrieving the server registry.\r\n\tError: " + ex.getMessage());
+            }
+        }
+        catch (RemoteException ex)
+        {
+            System.out.println("[SERVER-ERROR] There was a problem creating the server registry.\r\n\tError: " + ex.getMessage());
+        }
+
+        return null;
     }
 
     public ServerStatus getCurrentStatus()

@@ -40,7 +40,7 @@ import livebeanscommon.ISysOutWatcher;
 import livebeansserver.LiveBeansServer;
 import livebeansserver.util.ServerConstants.LogType;
 import livebeansserver.util.ServerConstants.OutputView;
-import livebeansserver.util.SystemOutStream;
+import livebeansserver.util.SystemOutputStream;
 
 /**
  *
@@ -50,7 +50,7 @@ public class ServerGUI extends javax.swing.JFrame implements ISysOutWatcher, ISe
 {
 
     private final PrintStream _systemOutStream;
-    private final SystemOutStream _systemOutFilteredStream;
+    private final SystemOutputStream _systemOutFilteredStream;
     private final LiveBeansServer _serverInstance;
     private final Style _infoStyle, _warningStyle, _errorStyle;
 
@@ -80,7 +80,7 @@ public class ServerGUI extends javax.swing.JFrame implements ISysOutWatcher, ISe
 
         _currentOutputView = OutputView.EVERYTHING;
 
-        _systemOutFilteredStream = new SystemOutStream(new ByteArrayOutputStream());
+        _systemOutFilteredStream = new SystemOutputStream(new ByteArrayOutputStream());
         _systemOutStream = new PrintStream(_systemOutFilteredStream);
 
         // Pass through System.out calls to a custom class
@@ -141,7 +141,8 @@ public class ServerGUI extends javax.swing.JFrame implements ISysOutWatcher, ISe
                 _warningList.add(newString);
                 newLineStyle = _warningStyle;
 
-                shouldAppend = (_currentOutputView == OutputView.EVERYTHING || _currentOutputView == OutputView.WARNINGS);
+                shouldAppend = (_currentOutputView == OutputView.EVERYTHING
+                                || _currentOutputView == OutputView.WARNINGS);
             }
             else if (newString.contains("[SERVER-ERROR]")
                      || newString.contains("Exception")
@@ -150,13 +151,15 @@ public class ServerGUI extends javax.swing.JFrame implements ISysOutWatcher, ISe
             {
                 _errorList.add(newString);
                 newLineStyle = _errorStyle;
-                shouldAppend = (_currentOutputView == OutputView.EVERYTHING || _currentOutputView == OutputView.ERRORS);
+                shouldAppend = (_currentOutputView == OutputView.EVERYTHING
+                                || _currentOutputView == OutputView.ERRORS);
             }
             else
             {
                 _informationList.add(newString);
 
-                shouldAppend = (_currentOutputView == OutputView.EVERYTHING || _currentOutputView == OutputView.INFORMATION);
+                shouldAppend = (_currentOutputView == OutputView.EVERYTHING
+                                || _currentOutputView == OutputView.INFORMATION);
             }
 
             _everythingList.add(newString);

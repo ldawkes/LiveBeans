@@ -55,15 +55,20 @@ class ClientChecker implements Runnable
     {
         try
         {
-            HashMap<Integer, Long> clientHeartbeats = LiveBeansServer.getInstance().getClientHeartbeats();
+            LiveBeansServer serverInstance = LiveBeansServer.getInstance();
+            HashMap<Integer, Long> clientHeartbeats
+                                   = serverInstance.getClientHeartbeats();
 
-            for (HashMap.Entry<Integer, Long> heartbeat : clientHeartbeats.entrySet())
+            for (HashMap.Entry<Integer, Long> heartbeat
+                 : clientHeartbeats.entrySet())
             {
-                if ((System.nanoTime() - heartbeat.getValue()) / 1000000000 > _checkTime)
+                if ((System.nanoTime() - heartbeat.getValue())
+                    / 1000000000 > _checkTime)
                 {
-                    System.out.println("[SERVER-LOG] Found a disconnected/crashed client, removing...");
+                    System.out.println("[SERVER-LOG] Found a disconnected/crashed"
+                                       + " client, removing...");
 
-                    LiveBeansServer.getInstance().unRegisterClient(heartbeat.getKey());
+                    serverInstance.unRegisterClient(heartbeat.getKey());
                 }
             }
         }
